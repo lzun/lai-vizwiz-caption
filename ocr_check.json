@@ -1,0 +1,26 @@
+[
+ {
+  "file": "VizWiz_val_00004611.jpg",
+  "easyocr": "[EasyOCR: no se pudo procesar la imagen]",
+  "landingai": "Good Stuff®\nup provides:\nto enjoy your favorite Chunky™\nminutes away from home in\nconvenient 15oz microwavable bowl\n\n<!-- doc_id=parse-01m0ke7xk85dg9avxc0rf9ha30 -->",
+  "refs": [
+   "A can of food placed by a brown FedEx box.",
+   "I see a can of something that says good stuff on it near a brown FedEx box.",
+   "A can of food labeled \"Good Stuff\" sits next to a FedEx box.",
+   "in this photo is a can with the word good stuff",
+   "Canned good item with red and green label on a white surface, with a brown FedEx box in the background."
+  ]
+ },
+ {
+  "file": "VizWiz_val_00003096.jpg",
+  "easyocr": "",
+  "landingai": "<figure type=\"PHOTOGRAPH\">\n\n<description>A high-angle, close-up photograph of a light green Verbatim external hard drive sitting on a light-colored wooden desk next to a white laptop. The hard drive is oriented vertically on the left side of the frame, with the brand name 'Verbatim' printed in white near the top edge. To the right, a white laptop is partially visible, with two cables connected to its side ports: a black USB cable with a ferrite bead connected to the hard drive, and a white cable that loops around on the wooden surface. The lighting is soft and natural, casting subtle shadows on the wood grain.</description></figure>\n\n<!-- doc_id=parse-01m0ke8aq4515v19ckpmjwqcce -->",
+  "refs": [
+   "A power bank in Apple MacBook on top of a wooden desk",
+   "a small green device next to a laptop computer",
+   "A white laptop sitting on a wood colored table with several cords plugged into it.",
+   "A laptop with  three wires attached to it on the side with a battery next to it is on top of a table.",
+   "A white laptop with three wires coming out of the side."
+  ]
+ }
+]

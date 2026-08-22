@@ -29,6 +29,7 @@ wizviz-caption/
 ├── 01_exploratory_analysis.ipynb análisis exploratorio (EDA) con gráficos
 ├── baseline_blip_lora.py         fine-tuning LoRA + evaluación
 ├── infer_caption.py              inferencia / demo + galería HTML
+├── ocr_compare.py                comparación OCR: EasyOCR vs Landing AI
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -216,7 +217,41 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 
 ---
 
-## 6. Lecciones aprendidas / consideraciones
+## 6. Exploración de OCR (Fase 1 — comparación)
+
+El 63 % de imágenes tienen texto, así que se exploró añadir OCR. Se comparan dos motores sobre
+**30 imágenes de val con `text_detected`** (`ocr_compare.py` → galería `ocr_compare.html`).
+Como VizWiz-Captions **no trae ground-truth de OCR**, la comparación es cualitativa.
+
+| Motor | Coste | Fallos / vacías | Texto extraído | Comportamiento |
+|-------|-------|-----------------|----------------|----------------|
+| **EasyOCR** (tradicional, GPU) | gratis | 2 fallos + 4 vacías (6/30) | 6 557 chars | OCR crudo; se degrada mucho en fotos difíciles |
+| **Landing AI ADE** (de paga) | ~30 créditos (de 1 000 gratis) → $0 | 0 | 21 988 chars (**3.4×**) | Nunca falla; transcribe documentos limpio y **describe** las fotos |
+
+**Hallazgos:**
+- **Landing AI es mucho más robusto.** Nunca falla ni devuelve vacío; extrae 3.4× más texto.
+  En texto tipo documento lo transcribe casi perfecto (p. ej. `User account | GeoAccess - Internet
+  Explorer http://geoaccess.org/...`) donde EasyOCR devuelve ruido (`ccount Gcoaccess... optin htp`).
+- **EasyOCR se hunde en fotos degradadas** (blur, ángulo, poca luz): produce cadenas como
+  `4 3 I 3 3 Mm 8 0 S 8 B...` o directamente no procesa la imagen.
+- **Ojo — no es una comparación pareja.** Landing AI ADE **no es OCR puro**: es *document
+  understanding* agéntico. En 20/30 imágenes devolvió una **descripción de escena**
+  (`<figure><description>…`), no solo texto verbatim — a menudo leyendo la marca del producto
+  (`Verbatim`, `McDonald's`) y quedando **más cerca de una caption** que del OCR. EasyOCR da tokens
+  crudos; ADE da texto + descripción (más útil, pero no literal).
+
+**Implicación para la Fase 2:** para inyectar OCR como señal al captioner, EasyOCR aporta tokens
+crudos baratos; Landing AI aporta texto+descripción de más calidad pero con coste por imagen. Falta
+medir cuál mejora más el CIDEr en las imágenes con texto.
+
+**Notas de entorno OCR:**
+- EasyOCR 1.7.2 **requiere OpenCV 4.x** (`opencv-python-headless<5`); con OpenCV 5 crashea en `resize`.
+- Algunas imágenes degradadas rompen EasyOCR (recorte vacío) → `run_easyocr` lo captura por imagen.
+- Clave de Landing AI en `~/wizviz/.env` (fuera del repo) como `VISION_AGENT_API_KEY=...` (gitignored).
+
+---
+
+## 7. Lecciones aprendidas / consideraciones
 
 1. **Smart App Control bloquea PyTorch en Windows** (`WinError 4551`). Diagnóstico:
    `HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`.
@@ -230,19 +265,22 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 8. **Filtrar precanned/rejected** es imprescindible; sin ello se entrena con ruido/frases fijas.
 9. **test sin captions** → evaluar en val; **523 imágenes extra** en train se ignoran vía JSON.
 10. **venv en Linux fs, datos en /mnt/c**: buen equilibrio velocidad/espacio (no copiar 30 GB).
+11. **EasyOCR necesita OpenCV 4.x** (`opencv-python-headless<5`) y hay que envolver `readtext`
+    en try/except (algunas fotos degradadas lo crashean).
 
 ---
 
-## 7. Próximos pasos
+## 8. Próximos pasos
 
-- [ ] **OCR** para el 63 % de imágenes con texto — el techo de mejora más claro.
+- [x] **OCR — Fase 1**: comparar EasyOCR vs Landing AI ADE (ver §6). Landing AI 3.4× más texto y más robusto.
+- [ ] **OCR — Fase 2**: inyectar el texto OCR como prefijo en BLIP y medir la mejora de CIDEr en val.
 - [ ] **Submission al test oficial** de VizWiz para una cifra comparable públicamente.
 - [ ] Escalar el fine-tuning: más épocas, LoRA de mayor rango, o afinar el encoder de visión.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
 
-## 8. Referencias
+## 9. Referencias
 
 - D. Gurari, Y. Zhao, M. Zhang, N. Bhattacharya. *Captioning Images Taken by People Who Are Blind.*
   ECCV 2020. (`2002.08565v2.pdf`) · <https://vizwiz.org>

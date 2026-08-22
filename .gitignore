@@ -15,6 +15,11 @@ venv/
 env/
 ENV/
 
+# Secretos / claves de API (NUNCA versionar) — p. ej. VISION_AGENT_API_KEY de Landing AI
+.env
+*.env
+
+
 # ─────────────────────────────────────────────────────────────
 # Jupyter
 # ─────────────────────────────────────────────────────────────

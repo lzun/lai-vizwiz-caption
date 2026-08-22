@@ -1,0 +1,73 @@
+[
+ {
+  "file": "VizWiz_val_00004611.jpg",
+  "easyocr": "[EasyOCR: no se pudo procesar la imagen]",
+  "landingai": null,
+  "refs": [
+   "A can of food placed by a brown FedEx box.",
+   "I see a can of something that says good stuff on it near a brown FedEx box.",
+   "A can of food labeled \"Good Stuff\" sits next to a FedEx box.",
+   "in this photo is a can with the word good stuff",
+   "Canned good item with red and green label on a white surface, with a brown FedEx box in the background."
+  ]
+ },
+ {
+  "file": "VizWiz_val_00003096.jpg",
+  "easyocr": "",
+  "landingai": null,
+  "refs": [
+   "A power bank in Apple MacBook on top of a wooden desk",
+   "a small green device next to a laptop computer",
+   "A white laptop sitting on a wood colored table with several cords plugged into it.",
+   "A laptop with  three wires attached to it on the side with a battery next to it is on top of a table.",
+   "A white laptop with three wires coming out of the side."
+  ]
+ },
+ {
+  "file": "VizWiz_val_00000610.jpg",
+  "easyocr": "ccount Gcoaccess Internet Explorer, optin htp gcoaccess oroiu errsoister\nFavontes Iool; Help\navuuc\nMilvK (verify using audo) Tyne the characters VOu sce the picture above; if YOu Cantt (Pac them, submit the form and nev Image qenerated; Not Case sensitie\nAccessoaty Informaton for PWD; Eacurtadavidsoni\ndentity Receru \"5/25/21 5/25/2 5/26 376 54/26/2\nCity-Go-Round Oflfers AppS and e admiri\nCreate new account\nrr-Enabling Summic Froceedings includng Accessible Trancpct Pant bilcurtiedavidson\nHopstop Trarcit App Includes Stalr-e55 Search\nLlI'OlLades\n[cLHISUMCMGws] Diges,\nUact accuumt\nGCUAC\n8432",
+  "landingai": null,
+  "refs": [
+   "A monitor showing a verification log in is shown in a dark room.",
+   "An open laptop is sitting in a dark room with a finger hovering over the top of the screen.",
+   "A computer screen that is stuck on the captcha",
+   "The login screen for some application on a Windows home computer.",
+   "A website that needs the captcha code Vick entered in order to create a new account."
+  ]
+ },
+ {
+  "file": "VizWiz_val_00000807.jpg",
+  "easyocr": "(ne\nWtetet\nVoucam",
+  "landingai": null,
+  "refs": [
+   "upper left corner of computer desktop screen with Youcam window showing",
+   "Windows for a webcam are being displayed on this computer screen.",
+   "a computer screen or computer monitor for a laptop of some sort",
+   "A computer is displaying information on it's screen.",
+   "A black background with a open blue webcam"
+  ]
+ },
+ {
+  "file": "VizWiz_val_00000362.jpg",
+  "easyocr": "4 3 I 3 3 Mm 8 0 S 8 B 9 9 8 0 E 1 3 43 1 8 8 1 0 3 3 1 1 5 2 2 33  [ 1 8 1 : & 0 1 1 2 4 U 1 3 1 1 0 @ 1 2 8 [ 1 4 1 g 1 L 1 1 1 } B 1 9 3",
+  "landingai": null,
+  "refs": [
+   "A browser window shows a carton with one person speaking a long paragraph.",
+   "a safari web browser open to twitter page of a comic funny page",
+   "A speech bubble from a comic talking about seeing a UFO after going to the beauty salon.",
+   "A website page on a computer screen of black and white comics.",
+   "A comic on a computer screen in an internet browser"
+  ]
+ },
+ {
+  "file": "VizWiz_val_00002644.jpg",
+  "easyocr": "m Tm lovin' itc yp4m JASTE \"waMaC; I Matters\n3",
+  "landingai": null,
+  "refs": [
+   "A white styrofoam beverage cup with the McDonald's slogan, \"I'm Lovin' It\" and the McDonald's logo on it -- which is a yellow M on a dark red background.",
+   "A Caucasian hand holding a large foam cup from McDonald's.",
+   "A hand holding a tall McDonald's to-go cup.",
+   "a styrofoam cup from mcdonalds, text reads \"Taste matters\" and \"im lovin' it\""
+  ]
+ }
+]
