@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+build/
+dist/
+
+# Entornos virtuales (el venv real vive en WSL: ~/wizviz/.venv)
+.venv/
+venv/
+env/
+ENV/
+
+# ─────────────────────────────────────────────────────────────
+# Jupyter
+# ─────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────────────────────
+# Editores / Sistema operativo
+# ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# ─────────────────────────────────────────────────────────────
+# Salidas de entrenamiento / modelos / cachés
+# ─────────────────────────────────────────────────────────────
+runs/                    # checkpoints y adaptadores LoRA (--output-dir)
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+.cache/
+wandb/
+*.log
+
+# Galerías HTML generadas por infer_caption.py (demo*.html)
+demo*.html
+# (reporte_baseline.html SÍ se versiona: es un entregable, no coincide con demo*.html)
+
+# ─────────────────────────────────────────────────────────────
+# Dataset — grande y redescargable desde https://vizwiz.org
+# Quita estas líneas (o usa Git LFS) si quieres versionar los datos.
+# ─────────────────────────────────────────────────────────────
+train/
+val/
+test/
+annotations/
+VizWiz_captions_project_all_metadata.csv
+*.pdf

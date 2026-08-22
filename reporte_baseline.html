@@ -1,0 +1,380 @@
+<title>VizWiz Caption Baseline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --paper:#f5f6f8; --surface:#ffffff; --surface-2:#eef1f5;
+    --ink:#1a2230; --muted:#5c6675; --faint:#8b95a5;
+    --accent:#c8791f; --accent-soft:#f0e0cb;
+    --data:#216e6a; --data-soft:#d3e6e4;
+    --line:#e2e5ea; --line-strong:#cdd3dc;
+    --good:#2f8f6b;
+    --shadow:0 1px 2px rgba(20,32,46,.05), 0 8px 28px rgba(20,32,46,.06);
+  }
+  :root:not([data-theme="light"]){}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0f141b; --surface:#161d27; --surface-2:#1c242f;
+      --ink:#e8ecf2; --muted:#95a1b3; --faint:#6b7788;
+      --accent:#e8a34a; --accent-soft:#3a2c17;
+      --data:#4fb0a8; --data-soft:#183330;
+      --line:#26303c; --line-strong:#334050;
+      --good:#57b98c;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0f141b; --surface:#161d27; --surface-2:#1c242f;
+    --ink:#e8ecf2; --muted:#95a1b3; --faint:#6b7788;
+    --accent:#e8a34a; --accent-soft:#3a2c17;
+    --data:#4fb0a8; --data-soft:#183330;
+    --line:#26303c; --line-strong:#334050;
+    --good:#57b98c;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    font-size:17px; line-height:1.6; letter-spacing:-.003em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px}
+  .measure{max-width:660px}
+
+  a{color:var(--accent); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:2px}
+
+  h1,h2,h3{font-family:"Spectral", Georgia, serif; font-weight:600; text-wrap:balance; line-height:1.15}
+  code,.mono{font-family:"IBM Plex Mono", ui-monospace, monospace}
+
+  /* ---- masthead ---- */
+  header.masthead{border-bottom:1px solid var(--line); padding:64px 0 40px; margin-bottom:8px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:12.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); font-weight:500}
+  h1{font-size:clamp(34px,6vw,54px); margin:18px 0 0; letter-spacing:-.02em}
+  h1 .it{font-style:italic; font-weight:400; color:var(--muted)}
+  .dek{max-width:600px; color:var(--muted); font-size:19px; margin:18px 0 0}
+  .meta{display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:28px}
+  .tag{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--muted);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:5px 12px}
+  .tag b{color:var(--ink); font-weight:600}
+
+  /* ---- sections ---- */
+  section{padding:52px 0; border-bottom:1px solid var(--line)}
+  .sec-head{display:flex; align-items:baseline; gap:16px; margin-bottom:8px}
+  .sec-num{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--faint); font-weight:500;
+    padding-top:6px; min-width:28px}
+  h2{font-size:clamp(24px,3.4vw,32px); margin:0; letter-spacing:-.015em}
+  section > .wrap > p, section > .wrap > .measure > p{color:var(--ink)}
+  .lead{font-size:18.5px}
+  p{margin:16px 0}
+  .muted{color:var(--muted)}
+  strong{font-weight:600}
+
+  /* ---- headline result ---- */
+  .headline{background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    box-shadow:var(--shadow); padding:32px 34px; margin-top:8px;
+    display:grid; grid-template-columns:auto 1fr; gap:28px; align-items:center}
+  .bignum{font-family:"Spectral",serif; font-weight:700; font-size:clamp(56px,11vw,92px);
+    line-height:.9; color:var(--accent); font-variant-numeric:tabular-nums}
+  .bignum small{display:block; font-family:"IBM Plex Mono",monospace; font-size:13px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:500; margin-top:12px}
+  .headline .say{font-size:18px; color:var(--ink)}
+  .headline .say b{color:var(--accent)}
+
+  /* ---- stat row ---- */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-top:26px}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 18px 16px}
+  .stat .n{font-family:"IBM Plex Mono",monospace; font-size:27px; font-weight:600; color:var(--ink);
+    font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+  .stat .n .u{font-size:15px; color:var(--muted); font-weight:400}
+  .stat .k{font-size:13.5px; color:var(--muted); margin-top:5px}
+
+  /* ---- results table ---- */
+  .tablecard{margin-top:24px; border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    box-shadow:var(--shadow); background:var(--surface)}
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse; width:100%; min-width:560px}
+  th,td{padding:14px 18px; text-align:right; font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left}
+  thead th{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); font-weight:500; background:var(--surface-2);
+    border-bottom:1px solid var(--line-strong)}
+  tbody td{border-top:1px solid var(--line); font-family:"IBM Plex Mono",monospace; font-size:15px}
+  tbody tr:first-child td{border-top:none}
+  tbody td:first-child{font-family:"IBM Plex Sans",sans-serif; font-size:15px; color:var(--ink)}
+  tr.best{background:var(--accent-soft)}
+  tr.best td{color:var(--ink)}
+  tr.best td:first-child{font-weight:600}
+  .rowtag{font-family:"IBM Plex Sans",sans-serif; font-size:11.5px; color:var(--muted); display:block; margin-top:2px}
+  .cap{color:var(--good); font-weight:600}
+
+  /* ---- progression bars ---- */
+  .prog{margin-top:24px; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:26px 28px; box-shadow:var(--shadow)}
+  .prog h3{margin:0 0 4px; font-size:18px}
+  .prog .sub{font-size:14px; color:var(--muted); margin:0 0 22px}
+  .bar-row{display:grid; grid-template-columns:140px 1fr 56px; align-items:center; gap:14px; margin:12px 0}
+  .bar-lab{font-size:14px; color:var(--muted)}
+  .bar-lab b{color:var(--ink); font-weight:500; font-family:"IBM Plex Sans",sans-serif}
+  .track{height:22px; background:var(--surface-2); border-radius:6px; position:relative; overflow:hidden}
+  .fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--data),var(--accent))}
+  .fill.base{background:var(--line-strong)}
+  .bar-val{font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:600; text-align:right;
+    font-variant-numeric:tabular-nums}
+  .paperband{position:relative; height:1px; margin:20px 0 2px}
+  .papermark{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--muted)}
+
+  /* ---- examples ---- */
+  .ex{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px}
+  .exq{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px}
+  .exq .role{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--faint); margin-bottom:6px}
+  .exq.b{border-left:3px solid var(--line-strong)}
+  .exq.f{border-left:3px solid var(--accent)}
+  .exq .txt{font-size:15.5px}
+  .exq.f .txt{color:var(--ink)}
+  .exq.b .txt{color:var(--muted)}
+  .exhead{font-size:13.5px; color:var(--muted); margin:20px 0 0}
+
+  /* ---- lists ---- */
+  ul.clean{list-style:none; padding:0; margin:16px 0}
+  ul.clean li{padding:12px 0 12px 26px; border-top:1px solid var(--line); position:relative}
+  ul.clean li:first-child{border-top:none}
+  ul.clean li::before{content:""; position:absolute; left:4px; top:20px; width:7px; height:7px;
+    border-radius:2px; background:var(--accent)}
+  ul.clean li b{font-weight:600}
+
+  /* ---- reproducibility ---- */
+  pre{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+    overflow-x:auto; font-size:13.5px; line-height:1.65; color:var(--ink); margin:14px 0}
+  pre .cm{color:var(--faint)}
+  .files{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:18px}
+  .file{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px}
+  .file .fn{font-family:"IBM Plex Mono",monospace; font-size:13.5px; color:var(--accent); font-weight:500}
+  .file .fd{font-size:13px; color:var(--muted); margin-top:4px}
+
+  footer{padding:40px 0 64px; color:var(--faint); font-size:13.5px}
+  footer .mono{font-size:12.5px}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    .headline{grid-template-columns:1fr; gap:16px}
+    .ex{grid-template-columns:1fr}
+    .bar-row{grid-template-columns:96px 1fr 48px; gap:10px}
+    .sec-head{gap:10px}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .fill{animation:grow .9s cubic-bezier(.2,.7,.2,1) both}
+    @keyframes grow{from{width:0 !important}}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Reporte de experimentos · Image Captioning</div>
+  <h1>Baseline sobre <span class="it">VizWiz-Captions</span></h1>
+  <p class="dek">Fine-tuning de BLIP-base con LoRA para describir fotos tomadas por
+  personas ciegas — entrenado y evaluado en una laptop con 8&nbsp;GB de VRAM.</p>
+  <div class="meta">
+    <span class="tag">Dataset · <b>VizWiz-Captions 1.0</b></span>
+    <span class="tag">Modelo · <b>BLIP-base + LoRA</b></span>
+    <span class="tag">GPU · <b>RTX 5060 Laptop 8GB</b></span>
+    <span class="tag">Entorno · <b>WSL2 · torch cu128</b></span>
+    <span class="tag">Fecha · <b>2026-08-21</b></span>
+  </div>
+</header>
+
+<!-- HEADLINE -->
+<section>
+  <div class="headline">
+    <div class="bignum">60.3<small>CIDEr en val</small></div>
+    <div class="say">
+      El modelo fine-tuneado alcanza <b>CIDEr 60.3</b> sobre validación, dentro del
+      rango reportado en el paper original (~59–61) — partiendo de <b>43.5</b> del
+      modelo base sin adaptar. El fine-tuning con LoRA ajusta solo el
+      <b>0.52%</b> de los parámetros.
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n">+16.8</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
+    <div class="stat"><div class="n">1.18<span class="u">M</span></div><div class="k">Parámetros entrenables (de 225M)</div></div>
+    <div class="stat"><div class="n">76<span class="u">min</span></div><div class="k">Entrenamiento full en la RTX 5060</div></div>
+    <div class="stat"><div class="n">100.6<span class="u">k</span></div><div class="k">Pares imagen–caption (train limpio)</div></div>
+  </div>
+</section>
+
+<!-- 1 DATASET -->
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>El dataset y su limpieza</h2></div>
+  <div class="measure">
+    <p class="lead">VizWiz-Captions contiene fotos reales tomadas por personas ciegas, con
+    <strong>5 captions por imagen</strong> recogidas por crowdsourcing. A diferencia de COCO,
+    las imágenes traen problemas de calidad genuinos y mucho texto que el usuario quería que le leyeran.</p>
+    <p>El loader descarta dos tipos de caption antes de entrenar: las <strong>precanned</strong>
+    (texto fijo <em>“Quality issues are too severe…”</em> cuando la imagen es irreconocible) y las
+    <strong>rejected</strong> por control de calidad. Esto retira 16.6k captions en train.</p>
+  </div>
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Partición</th><th>Imágenes (JSON)</th><th>Captions crudas</th><th>Captions limpias</th><th>Imágenes usadas</th></tr></thead>
+      <tbody>
+        <tr><td>train</td><td>23 431</td><td>117 155</td><td>100 575</td><td>22 866</td></tr>
+        <tr><td>val</td><td>7 750</td><td>38 750</td><td>33 145</td><td>7 542</td></tr>
+        <tr><td>test</td><td>8 000</td><td class="muted">— sin captions —</td><td class="muted">—</td><td>8 000</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+  <p class="muted" style="font-size:14px;margin-top:12px">El test set no tiene captions públicas (hold-out del reto oficial), por lo que toda la evaluación se hace sobre <strong>val</strong>.</p>
+</section>
+
+<!-- 2 EDA -->
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>Qué dice el análisis exploratorio</h2></div>
+  <div class="measure">
+    <ul class="clean">
+      <li><b>Captions cortas.</b> Mediana de 11 palabras (media 12, p95 ≈ 20); un <code>max_length</code> de generación de ~30 tokens sobra.</li>
+      <li><b>Texto por todas partes.</b> ~<b>63%</b> de las imágenes tienen texto detectado — etiquetas, pantallas, envases. Es el reto característico del dominio y el techo de mejora más claro (OCR).</li>
+      <li><b>La longitud no delata el texto.</b> Las captions de imágenes con y sin texto miden casi lo mismo (12.06 vs 11.96 palabras): la señal está en el contenido, no en el largo.</li>
+      <li><b>Calidad irregular.</b> Solo el 36% de anotaciones marca “sin problema”; dominan <b>encuadre (38%)</b> y <b>blur (32%)</b>. No hay que esperar cifras tipo COCO.</li>
+      <li><b>Mayúsculas: ruido menor.</b> Solo 0.8% de captions vienen 100% en MAYÚSCULAS — un lowercasing ligero basta.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 3 SETUP -->
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>Montaje del baseline</h2></div>
+  <div class="measure">
+    <p class="lead"><strong>BLIP-base</strong> (<code>Salesforce/blip-image-captioning-base</code>, 225M params)
+    afinado con <strong>LoRA</strong> (r=16) sobre las proyecciones <code>query</code>/<code>value</code>
+    de la atención — 1.18M parámetros entrenables, el resto congelado. Precisión fp16.</p>
+    <p>La GPU RTX 5060 es Blackwell (sm_120): requiere torch con CUDA 12.8. En Windows nativo,
+    <strong>Smart App Control bloqueaba las DLL de PyTorch</strong>, así que todo corre dentro de
+    <strong>WSL2 + Ubuntu</strong>, donde la GPU funciona por passthrough. Métricas CIDEr/BLEU/ROUGE
+    vía <code>pycocoevalcap</code> con tokenización propia (sin dependencia de Java).</p>
+  </div>
+</section>
+
+<!-- 4 RESULTS -->
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>Resultados</h2></div>
+  <p class="measure lead">Evaluación sobre 2 000 imágenes de val con búsqueda por haces (beam = 3).
+  Tres modelos: BLIP sin adaptar, LoRA sobre un subconjunto, y LoRA sobre el train completo.</p>
+
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Modelo</th><th>CIDEr</th><th>BLEU-4</th><th>BLEU-1</th><th>ROUGE-L</th></tr></thead>
+      <tbody>
+        <tr><td>BLIP base <span class="rowtag">sin fine-tuning</span></td><td>43.49</td><td>20.87</td><td>63.27</td><td>43.09</td></tr>
+        <tr><td>LoRA · 20k pares · 2 épocas</td><td>54.40</td><td>22.59</td><td>65.57</td><td>45.99</td></tr>
+        <tr class="best"><td>LoRA · train completo · 3 épocas</td><td class="cap">60.28</td><td class="cap">24.26</td><td>67.18</td><td>46.83</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+
+  <div class="prog">
+    <h3>Progresión de CIDEr</h3>
+    <p class="sub">Cada etapa suma: adaptar el dominio pesa más que escalar los datos, pero ambos aportan.</p>
+    <div class="bar-row">
+      <div class="bar-lab"><b>Base</b><br>sin FT</div>
+      <div class="track"><div class="fill base" style="width:62.1%"></div></div>
+      <div class="bar-val">43.5</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>LoRA 20k</b><br>2 épocas</div>
+      <div class="track"><div class="fill" style="width:77.7%"></div></div>
+      <div class="bar-val">54.4</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>LoRA full</b><br>3 épocas</div>
+      <div class="track"><div class="fill" style="width:86.1%"></div></div>
+      <div class="bar-val">60.3</div>
+    </div>
+    <div class="bar-row" style="margin-top:14px">
+      <div class="bar-lab papermark">Paper original</div>
+      <div class="track" style="background:transparent">
+        <div style="position:absolute;left:84.3%;width:2.9%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
+      </div>
+      <div class="bar-val papermark" style="color:var(--data)">59–61</div>
+    </div>
+    <p class="sub" style="margin:16px 0 0">Escala 0–70 · CIDEr ×100</p>
+  </div>
+
+  <p class="muted" style="font-size:14px;margin-top:16px">Entrenamiento del modelo full: 3 épocas sobre 100 575 pares en <strong>4 559&nbsp;s (~76&nbsp;min)</strong> a 66 pares/s, con la loss bajando de 3.69 a 2.98.</p>
+</section>
+
+<!-- 5 QUALITATIVE -->
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>Ejemplos: base vs fine-tuned</h2></div>
+  <p class="measure">Sobre imágenes del test set, el modelo afinado es más específico del dominio y empieza a atender al texto de los envases.</p>
+
+  <p class="exhead">Botella de medicina (val)</p>
+  <div class="ex">
+    <div class="exq b"><div class="role">Base</div><div class="txt">a person holding a bottle of liquid on a table</div></div>
+    <div class="exq f"><div class="role">Fine-tuned</div><div class="txt">a person is holding a bottle of medicine</div></div>
+  </div>
+
+  <p class="exhead">Radio con display</p>
+  <div class="ex">
+    <div class="exq b"><div class="role">Base</div><div class="txt">an old radio sitting on top of a table</div></div>
+    <div class="exq f"><div class="role">Fine-tuned</div><div class="txt">a black radio with red numbers on the screen</div></div>
+  </div>
+
+  <p class="exhead">Empaque de comida (intento de OCR)</p>
+  <div class="ex">
+    <div class="exq b"><div class="role">Base</div><div class="txt">a bag of food sitting on top of a stove</div></div>
+    <div class="exq f"><div class="role">Fine-tuned</div><div class="txt">a bag of “sakko brand low gly whole wheat”</div></div>
+  </div>
+  <p class="muted" style="font-size:14px;margin-top:14px">El último caso muestra el límite actual: el modelo intenta transcribir el texto del empaque, pero con errores. Ahí es donde un componente OCR daría el mayor salto.</p>
+</section>
+
+<!-- 6 NEXT -->
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Límites y próximos pasos</h2></div>
+  <div class="measure">
+    <ul class="clean">
+      <li><b>OCR para el 63% con texto.</b> Inyectar el texto reconocido (o usar un VLM con lectura) es el techo de mejora más claro.</li>
+      <li><b>Escalar el fine-tuning.</b> Más épocas, LoRA de mayor rango o afinar también el encoder de visión.</li>
+      <li><b>Submission oficial.</b> Generar captions del test set y enviarlas al reto VizWiz para una cifra comparable públicamente.</li>
+      <li><b>Robustez a la calidad.</b> Augmentations que imiten blur/encuadre podrían ayudar en las imágenes más difíciles.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7 REPRO -->
+<section style="border-bottom:none">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Reproducibilidad</h2></div>
+  <p class="measure">Todo corre desde Windows invocando el venv de WSL. Comandos principales:</p>
+<pre><span class="cm"># Entrenar el baseline completo (BLIP-base + LoRA)</span>
+python baseline_blip_lora.py --epochs 3 --batch-size 16 --max-eval-samples 2000
+
+<span class="cm"># Referencia del modelo base, sin fine-tuning</span>
+python baseline_blip_lora.py --no-train --max-eval-samples 2000
+
+<span class="cm"># Demo: captions + galería HTML, base vs fine-tuned</span>
+python infer_caption.py --split test --num 8 --random --compare --html demo.html</pre>
+
+  <div class="files">
+    <div class="file"><div class="fn">wizviz_captions.py</div><div class="fd">Loader HF datasets con limpieza (precanned / rejected).</div></div>
+    <div class="file"><div class="fn">01_exploratory_analysis.ipynb</div><div class="fd">Análisis exploratorio con gráficos.</div></div>
+    <div class="file"><div class="fn">baseline_blip_lora.py</div><div class="fd">Fine-tuning LoRA + evaluación CIDEr/BLEU/ROUGE.</div></div>
+    <div class="file"><div class="fn">infer_caption.py</div><div class="fd">Inferencia y galería HTML de demostración.</div></div>
+  </div>
+</section>
+
+<footer>
+  <div>VizWiz-Captions: Gurari et&nbsp;al., <span class="it" style="font-style:italic">Captioning Images Taken by People Who Are Blind</span> (ECCV 2020).</div>
+  <div class="mono" style="margin-top:6px">Reporte generado a partir de las corridas del 2026-08-21 · métricas sobre 2 000 imágenes de val, beam = 3.</div>
+</footer>
+
+</div>
