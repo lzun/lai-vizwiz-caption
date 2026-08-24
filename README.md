@@ -1,7 +1,7 @@
 # VizWiz-Captions — Experimentos de Image Captioning
 
 Bitácora del proyecto: dataset, entorno, baseline con fine-tuning (BLIP + LoRA),
-resultados y lecciones aprendidas. Última actualización: **2026-08-21**.
+resultados y lecciones aprendidas. Última actualización: **2026-08-24**.
 
 > **TL;DR** — Fine-tuning de BLIP-base con LoRA sobre VizWiz-Captions, entrenado en
 > una laptop RTX 5060 (8 GB) **dentro de WSL2**. Mejor resultado: **CIDEr 60.3** en val
@@ -29,7 +29,10 @@ wizviz-caption/
 ├── 01_exploratory_analysis.ipynb análisis exploratorio (EDA) con gráficos
 ├── baseline_blip_lora.py         fine-tuning LoRA + evaluación
 ├── infer_caption.py              inferencia / demo + galería HTML
-├── ocr_compare.py                comparación OCR: EasyOCR vs Landing AI
+├── ocr_compare.py                comparación OCR: EasyOCR vs Landing AI (Fase 1)
+├── ocr_precompute.py             precómputo/caché de OCR EasyOCR por imagen (Fase 2)
+├── ocr_landingai_precompute.py   precómputo async de OCR Landing AI ADE (Fase 3)
+├── baseline_blip_ocr.py          captioning con prefijo OCR + eval por subconjunto (Fases 2-3)
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -217,7 +220,7 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 
 ---
 
-## 6. Exploración de OCR (Fase 1 — comparación)
+## 6. Exploración de OCR (Fases 1, 2 y 3)
 
 El 63 % de imágenes tienen texto, así que se exploró añadir OCR. Se comparan dos motores sobre
 **30 imágenes de val con `text_detected`** (`ocr_compare.py` → galería `ocr_compare.html`).
@@ -241,8 +244,53 @@ Como VizWiz-Captions **no trae ground-truth de OCR**, la comparación es cualita
   crudos; ADE da texto + descripción (más útil, pero no literal).
 
 **Implicación para la Fase 2:** para inyectar OCR como señal al captioner, EasyOCR aporta tokens
-crudos baratos; Landing AI aporta texto+descripción de más calidad pero con coste por imagen. Falta
-medir cuál mejora más el CIDEr en las imágenes con texto.
+crudos baratos; Landing AI aporta texto+descripción de más calidad pero con coste por imagen.
+
+### Fase 2 — Inyectar OCR en el captioner (resultado negativo)
+
+Se inyectó el texto de **EasyOCR** (precomputado con `ocr_precompute.py`) como **prefijo
+condicional del decoder** de BLIP: en entrenamiento se enmascara el prefijo en la loss; en
+inferencia se genera a partir de `[CLS]+<OCR>` y se recorta el prefijo. Experimento A/B controlado
+sobre el **mismo subset de 20k pares / 2 épocas** (`baseline_blip_ocr.py`), evaluando en 2 000 val
+con métricas **desglosadas por `text_detected`**.
+
+| Subconjunto (CIDEr) | Control (sin OCR) | Con OCR (EasyOCR) | Δ |
+|---------------------|------------------:|------------------:|----:|
+| Todas (n=2000)      | 54.49 | 51.14 | **−3.35** |
+| **Con texto** (n=1559) | 51.68 | 47.37 | **−4.31** |
+| Sin texto (n=441)   | 62.18 | 62.43 | +0.25 |
+
+**Conclusión: la inyección naíf de OCR con EasyOCR NO ayuda — empeora, y justo en las imágenes
+con texto.** El experimento es fiable: el subconjunto *sin texto* (donde no se inyecta OCR) queda
+idéntico, así que el daño viene del **contenido ruidoso** del OCR, no de la mecánica. EasyOCR es
+demasiado ruidoso en estas fotos degradadas (ver Fase 1). Hay ganancias puntuales (p. ej. una
+botella pasó de *"bottle of cough"* a *"bottle of medicine"*), pero el ruido domina en promedio.
+
+### Fase 3 — Prefijo con Landing AI ADE (dos variantes)
+
+Se repitió el A/B usando **Landing AI ADE** como fuente del prefijo, precomputado en concurrencia
+(`ocr_landingai_precompute.py`, solo imágenes con `text_detected` → ~4 500 créditos, 0 fallos).
+Dos limpiezas del texto (`--ocr-clean`): **solo-texto** (transcripción literal, se quitan los
+bloques `<description>`) y **ADE completo** (descripción de escena + texto). Mismo subset de 20k / 2 épocas.
+
+| Variante (CIDEr) | Global | Con texto (n=1559) | Sin texto (n=441) |
+|------------------|-------:|-------------------:|------------------:|
+| Control (sin OCR)            | 54.49 | 51.68 | 62.18 |
+| EasyOCR                      | 51.14 | 47.37 | 62.43 |
+| Landing AI — solo texto      | 52.38 | 49.22 | 62.23 |
+| **Landing AI — ADE completo**| **56.99** | **54.84** | 63.26 |
+
+**Progresión monótona y clara:** EasyOCR (ruidoso) < LA solo-texto (limpio pero literal) < LA ADE
+completo — y **solo la última supera al control** (+2.5 global, **+3.2 en imágenes con texto**).
+
+**Interpretación honesta:** lo que ayuda **no es "leer el texto"** (el solo-texto literal sigue por
+debajo del control), sino la **descripción de escena** de ADE, que actúa como señal de un captioner
+externo fuerte — es esencialmente **destilación de un VLM**, no OCR. Coste de despliegue: la variante
+ganadora requiere una llamada a Landing AI (~1 crédito/img) también en inferencia.
+
+**Conclusión de las 3 fases:** el OCR *literal* (barato o caro) no mejora el captioning en VizWiz
+—las captions humanas describen escenas, no transcriben—; pero inyectar la **descripción
+multimodal** de una herramienta fuerte sí ayuda (+3.2 CIDEr en imágenes con texto).
 
 **Notas de entorno OCR:**
 - EasyOCR 1.7.2 **requiere OpenCV 4.x** (`opencv-python-headless<5`); con OpenCV 5 crashea en `resize`.
@@ -267,13 +315,20 @@ medir cuál mejora más el CIDEr en las imágenes con texto.
 10. **venv en Linux fs, datos en /mnt/c**: buen equilibrio velocidad/espacio (no copiar 30 GB).
 11. **EasyOCR necesita OpenCV 4.x** (`opencv-python-headless<5`) y hay que envolver `readtext`
     en try/except (algunas fotos degradadas lo crashean).
+12. **WSL se cae si la laptop suspende** (`Wsl/Service/CreateInstance/0x800705b4` al reanudar):
+    tumba los jobs largos. Mitigación: mantener la laptop despierta, y hacer los precómputos
+    **reanudables** (el caché OCR se guarda cada 100 imgs). Recuperación: `wsl --shutdown` y reintentar.
+13. **OCR-prefix en BLIP**: forzar `min_new_tokens` en generación; si no, un prefijo OCR ruidoso
+    colapsa la salida a vacío. BOS del decoder = `[DEC]` (30522), EOS = `[SEP]` (102).
 
 ---
 
 ## 8. Próximos pasos
 
 - [x] **OCR — Fase 1**: comparar EasyOCR vs Landing AI ADE (ver §6). Landing AI 3.4× más texto y más robusto.
-- [ ] **OCR — Fase 2**: inyectar el texto OCR como prefijo en BLIP y medir la mejora de CIDEr en val.
+- [x] **OCR — Fase 2**: prefijo OCR (EasyOCR) en BLIP → **resultado negativo** (CIDEr −3.35, −4.31 en imágenes con texto). El OCR ruidoso perjudica.
+- [x] **OCR — Fase 3**: prefijo Landing AI ADE. Solo-texto sigue bajo el control; **ADE completo (descripción) SÍ mejora** (+2.5 global, **+3.2 en imágenes con texto**). Ayuda la descripción del VLM, no el OCR literal.
+- [ ] **OCR — Fase 4 (idea)**: destilación explícita desde ADE, o gatear la descripción solo cuando aporta; medir coste/beneficio en inferencia.
 - [ ] **Submission al test oficial** de VizWiz para una cifra comparable públicamente.
 - [ ] Escalar el fine-tuning: más épocas, LoRA de mayor rango, o afinar el encoder de visión.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.

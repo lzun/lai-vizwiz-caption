@@ -335,15 +335,75 @@
     <div class="exq b"><div class="role">Base</div><div class="txt">a bag of food sitting on top of a stove</div></div>
     <div class="exq f"><div class="role">Fine-tuned</div><div class="txt">a bag of “sakko brand low gly whole wheat”</div></div>
   </div>
-  <p class="muted" style="font-size:14px;margin-top:14px">El último caso muestra el límite actual: el modelo intenta transcribir el texto del empaque, pero con errores. Ahí es donde un componente OCR daría el mayor salto.</p>
+  <p class="muted" style="font-size:14px;margin-top:14px">El último caso muestra el límite actual: el modelo intenta transcribir el texto del empaque, pero con errores. ¿Ayudaría un componente OCR? Lo medimos en la sección siguiente.</p>
 </section>
 
-<!-- 6 NEXT -->
+<!-- 6 OCR -->
 <section>
-  <div class="sec-head"><span class="sec-num">06</span><h2>Límites y próximos pasos</h2></div>
+  <div class="sec-head"><span class="sec-num">06</span><h2>¿Ayuda leer el texto? Experimento de OCR</h2></div>
+  <p class="measure lead">El 63&nbsp;% de las imágenes tienen texto. Se probó inyectar OCR como
+  <strong>prefijo del decoder</strong> de BLIP y medir el CIDEr, desglosado por si la imagen
+  tiene texto. Tres fuentes de OCR, mismo subset y ajustes que el baseline.</p>
+
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Enfoque</th><th>CIDEr global</th><th>Con texto</th><th>Sin texto</th></tr></thead>
+      <tbody>
+        <tr><td>Control <span class="rowtag">sin OCR</span></td><td>54.49</td><td>51.68</td><td>62.18</td></tr>
+        <tr><td>EasyOCR <span class="rowtag">gratis, ruidoso</span></td><td>51.14</td><td>47.37</td><td>62.43</td></tr>
+        <tr><td>Landing AI · solo texto <span class="rowtag">transcripción literal</span></td><td>52.38</td><td>49.22</td><td>62.23</td></tr>
+        <tr class="best"><td>Landing AI · ADE completo <span class="rowtag">descripción de escena</span></td><td class="cap">56.99</td><td class="cap">54.84</td><td>63.26</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+
+  <div class="prog">
+    <h3>CIDEr en imágenes con texto</h3>
+    <p class="sub">Solo el prefijo con la descripción de Landing AI supera la línea del control.</p>
+    <div class="bar-row">
+      <div class="bar-lab"><b>Control</b><br>sin OCR</div>
+      <div class="track"><div class="fill base" style="width:86.1%"></div></div>
+      <div class="bar-val">51.7</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>EasyOCR</b><br>ruidoso</div>
+      <div class="track"><div class="fill base" style="width:79.0%"></div></div>
+      <div class="bar-val" style="color:var(--muted)">47.4</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>LA solo texto</b><br>literal</div>
+      <div class="track"><div class="fill base" style="width:82.0%"></div></div>
+      <div class="bar-val" style="color:var(--muted)">49.2</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>LA ADE</b><br>descripción</div>
+      <div class="track">
+        <div class="fill" style="width:91.4%"></div>
+        <div style="position:absolute;left:86.1%;top:-4px;bottom:-4px;border-left:2px dashed var(--muted)"></div>
+      </div>
+      <div class="bar-val cap">54.8</div>
+    </div>
+    <p class="sub" style="margin:16px 0 0">Escala 0–60 · CIDEr ×100 · línea discontinua = control</p>
+  </div>
+
+  <div class="measure">
+    <p style="margin-top:26px">El resultado tiene un <strong>matiz que importa</strong>: lo que ayuda
+    <em>no es leer el texto</em>. La transcripción literal —barata (EasyOCR) o de calidad (Landing AI
+    solo-texto)— queda <strong>por debajo</strong> del control. Las captions humanas describen la
+    escena (<em>"a person holding a bottle"</em>), no transcriben etiquetas.</p>
+    <p>Lo que sí mejora (+3.2 CIDEr en imágenes con texto) es inyectar la <strong>descripción de
+    escena</strong> que genera Landing&nbsp;AI ADE — una señal rica de un modelo visión-lenguaje
+    fuerte. En la práctica es <strong>destilación de un VLM</strong>, no OCR. Y su coste se traslada
+    a la inferencia: requiere una llamada de pago por imagen.</p>
+  </div>
+</section>
+
+<!-- 7 NEXT -->
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Límites y próximos pasos</h2></div>
   <div class="measure">
     <ul class="clean">
-      <li><b>OCR para el 63% con texto.</b> Inyectar el texto reconocido (o usar un VLM con lectura) es el techo de mejora más claro.</li>
+      <li><b>Destilación desde el VLM.</b> El hallazgo del OCR apunta a entrenar contra las descripciones de un modelo fuerte como señal auxiliar —sin depender de él en inferencia.</li>
       <li><b>Escalar el fine-tuning.</b> Más épocas, LoRA de mayor rango o afinar también el encoder de visión.</li>
       <li><b>Submission oficial.</b> Generar captions del test set y enviarlas al reto VizWiz para una cifra comparable públicamente.</li>
       <li><b>Robustez a la calidad.</b> Augmentations que imiten blur/encuadre podrían ayudar en las imágenes más difíciles.</li>
@@ -353,7 +413,7 @@
 
 <!-- 7 REPRO -->
 <section style="border-bottom:none">
-  <div class="sec-head"><span class="sec-num">07</span><h2>Reproducibilidad</h2></div>
+  <div class="sec-head"><span class="sec-num">08</span><h2>Reproducibilidad</h2></div>
   <p class="measure">Todo corre desde Windows invocando el venv de WSL. Comandos principales:</p>
 <pre><span class="cm"># Entrenar el baseline completo (BLIP-base + LoRA)</span>
 python baseline_blip_lora.py --epochs 3 --batch-size 16 --max-eval-samples 2000
@@ -362,13 +422,18 @@ python baseline_blip_lora.py --epochs 3 --batch-size 16 --max-eval-samples 2000
 python baseline_blip_lora.py --no-train --max-eval-samples 2000
 
 <span class="cm"># Demo: captions + galería HTML, base vs fine-tuned</span>
-python infer_caption.py --split test --num 8 --random --compare --html demo.html</pre>
+python infer_caption.py --split test --num 8 --random --compare --html demo.html
+
+<span class="cm"># OCR: prefijo con la descripción de Landing AI ADE (variante ganadora)</span>
+python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-clean ade_full</pre>
 
   <div class="files">
     <div class="file"><div class="fn">wizviz_captions.py</div><div class="fd">Loader HF datasets con limpieza (precanned / rejected).</div></div>
     <div class="file"><div class="fn">01_exploratory_analysis.ipynb</div><div class="fd">Análisis exploratorio con gráficos.</div></div>
     <div class="file"><div class="fn">baseline_blip_lora.py</div><div class="fd">Fine-tuning LoRA + evaluación CIDEr/BLEU/ROUGE.</div></div>
     <div class="file"><div class="fn">infer_caption.py</div><div class="fd">Inferencia y galería HTML de demostración.</div></div>
+    <div class="file"><div class="fn">ocr_compare.py</div><div class="fd">Comparación EasyOCR vs Landing AI (Fase 1).</div></div>
+    <div class="file"><div class="fn">baseline_blip_ocr.py</div><div class="fd">Captioning con prefijo OCR + eval por subconjunto.</div></div>
   </div>
 </section>
 
