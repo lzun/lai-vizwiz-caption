@@ -155,6 +155,10 @@ def main():
     p.add_argument("--max-eval-samples", type=int, default=0)
     p.add_argument("--no-train", action="store_true")
     p.add_argument("--grad-checkpointing", action="store_true")
+    p.add_argument("--target-modules", default="query,value",
+                   help="módulos LoRA separados por coma (p. ej. 'query,value,qkv' para texto+visión)")
+    p.add_argument("--save-steps", type=int, default=0,
+                   help="si >0, guarda checkpoint cada N pasos (para reanudar)")
     args = p.parse_args()
     if args.max_train_samples == 0:
         args.max_train_samples = None
@@ -187,17 +191,22 @@ def main():
     if not args.no_train:
         from peft import LoraConfig, get_peft_model
 
+        targets = [t.strip() for t in args.target_modules.split(",") if t.strip()]
         lora = LoraConfig(
             r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=0.05, bias="none",
-            target_modules=["query", "value"],  # atención del decoder de texto de BLIP
+            target_modules=targets,  # texto (query/value) y opcionalmente visión (qkv)
         )
         model = get_peft_model(model, lora)
         model.print_trainable_parameters()
         if args.grad_checkpointing:
-            model.gradient_checkpointing_enable()
+            # no-reentrante: permite grad-checkpointing con LoRA sin forzar require_grad
+            # en los inputs (evita el choque con el += in-place de los embeddings de BLIP)
+            model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
         from transformers import Trainer, TrainingArguments
 
+        save_kw = ({"save_strategy": "steps", "save_steps": args.save_steps, "save_total_limit": 2}
+                   if args.save_steps > 0 else {"save_strategy": "no"})
         targs = TrainingArguments(
             output_dir=args.output_dir,
             per_device_train_batch_size=args.batch_size,
@@ -206,18 +215,24 @@ def main():
             num_train_epochs=args.epochs,
             fp16=(device == "cuda"),
             logging_steps=20,
-            save_strategy="no",
             remove_unused_columns=False,
-            dataloader_num_workers=4,
+            dataloader_num_workers=2,
             report_to=[],
+            **save_kw,
         )
         trainer = Trainer(
             model=model, args=targs,
             train_dataset=CaptionDataset(train_ds),
             data_collator=make_collate(processor),
         )
-        print("=== entrenando ===")
-        trainer.train()
+        # auto-resume desde el último checkpoint si existe
+        from transformers.trainer_utils import get_last_checkpoint
+        last_ckpt = get_last_checkpoint(args.output_dir) if Path(args.output_dir).is_dir() else None
+        if last_ckpt:
+            print(f"=== reanudando desde {last_ckpt} ===")
+        else:
+            print("=== entrenando (desde cero) ===")
+        trainer.train(resume_from_checkpoint=last_ckpt)
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         model.save_pretrained(args.output_dir)
         print(f"adaptador LoRA guardado en {args.output_dir}")

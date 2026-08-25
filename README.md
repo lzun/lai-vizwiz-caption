@@ -33,6 +33,8 @@ wizviz-caption/
 ├── ocr_precompute.py             precómputo/caché de OCR EasyOCR por imagen (Fase 2)
 ├── ocr_landingai_precompute.py   precómputo async de OCR Landing AI ADE (Fase 3)
 ├── baseline_blip_ocr.py          captioning con prefijo OCR + eval por subconjunto (Fases 2-3)
+├── baseline_blip_distill.py      destilación: pseudo-captions como target (Fases 4 y 4b)
+├── distill_teacher_gen.py        genera captions-profesor estilo-VizWiz (Fase 4b)
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -201,11 +203,16 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 |--------|------:|-------:|-------:|--------:|
 | BLIP base (sin fine-tuning) | 43.49 | 20.87 | 63.27 | 43.09 |
 | LoRA · 20k pares · 2 épocas | 54.40 | 22.59 | 65.57 | 45.99 |
-| **LoRA · train completo · 3 épocas** | **60.28** | **24.26** | **67.18** | **46.83** |
+| LoRA texto · train completo · 3 épocas | 60.28 | 24.26 | 67.18 | 46.83 |
+| LoRA texto+visión (r=32) · full · 2 épocas | 72.67 | 27.25 | 69.93 | 48.97 |
+| **LoRA texto+visión (r=32) · full · 4 épocas** | **74.60** | **27.51** | **70.38** | **49.02** |
 
 - El fine-tuning aporta **+16.8 CIDEr** sobre el base; escalar de 20k → 100k pares suma otros +5.9.
-- **CIDEr 60.3 cae en el rango del paper original (~59–61)**, logrado con LoRA (0.52 % de params) en 8 GB.
-- Entrenamiento full: 3 épocas / 100 575 pares en **4 559 s (~76 min)** a 66 pares/s, loss 3.69 → 2.98.
+- **Escalar al encoder de visión es el mayor salto: +12.4 CIDEr** (60.3 → 72.7) al aplicar LoRA
+  también al ViT (`qkv`) con r=32. Adaptar las *features visuales* al dominio (fotos borrosas,
+  ángulos raros) pesa mucho más que solo adaptar el decoder de texto.
+- Entrenamiento texto full: 3 épocas en ~76 min. Escalado (texto+visión): 2 épocas en **~104 min**
+  (32 pares/s, VRAM 7.0/8.1 GB sin OOM, batch 12, grad-checkpointing no-reentrante disponible).
 
 **Ejemplo cualitativo** (mejora de dominio):
 `base: "a person holding a bottle of liquid"` → `fine-tuned: "a person is holding a bottle of medicine"`.
@@ -220,7 +227,7 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 
 ---
 
-## 6. Exploración de OCR (Fases 1, 2 y 3)
+## 6. Exploración de OCR (Fases 1–4)
 
 El 63 % de imágenes tienen texto, así que se exploró añadir OCR. Se comparan dos motores sobre
 **30 imágenes de val con `text_detected`** (`ocr_compare.py` → galería `ocr_compare.html`).
@@ -292,6 +299,52 @@ ganadora requiere una llamada a Landing AI (~1 crédito/img) también en inferen
 —las captions humanas describen escenas, no transcriben—; pero inyectar la **descripción
 multimodal** de una herramienta fuerte sí ayuda (+3.2 CIDEr en imágenes con texto).
 
+### Fase 4 — Destilación desde ADE (resultado negativo)
+
+Como la ganancia de la Fase 3 exige llamar a Landing AI en inferencia, se intentó **destilar**:
+usar la primera oración de la descripción de ADE como **pseudo-caption extra** en entrenamiento
+(`baseline_blip_distill.py`), sin prefijo en inferencia → modelo autónomo y gratis. Solo se usaron
+1 981 descripciones limpias (filtradas de transcripciones ruidosas). A/B vs control, mismo subset.
+
+| Modelo (CIDEr) | Global | Con texto | Sin texto | Dep. inferencia |
+|----------------|-------:|----------:|----------:|-----------------|
+| Control                  | 55.14 | 52.28 | 62.86 | ninguna |
+| Fase 3 (ADE prefijo)     | 56.99 | 54.84 | 63.26 | Landing AI/img |
+| **Destilado (Fase 4)**   | **33.54** | 29.53 | 46.67 | ninguna |
+
+**Empeoró mucho (−21.6 CIDEr).** La destilación **contamina el estilo**: BLIP aprende la prosa
+verbosa de ADE (*"a close-up, slightly blurry photograph of a red, white and blue tube of
+toothpaste…"*) y la aplica en todas partes, incluso en imágenes sin texto (62.86→46.67, donde no
+había pseudo-captions). Como CIDEr/BLEU premian coincidir con las captions humanas **cortas**, el
+desajuste de estilo domina. Bastó un ~10% de ejemplos verbosos. El **conocimiento** sí se transfiere
+(*"bottle of cough"* → *"medicine bottle"*), pero el estilo lo arruina.
+
+**Lección:** destilar de un profesor con estilo distinto al de las referencias daña la métrica.
+
+### Fase 4b — Destilación estilo-matched
+
+Se corrigió el estilo: el profesor es el modelo de la Fase 3 (que ya produce captions cortas
+estilo-VizWiz). Se generan sus captions CON prefijo ADE (`distill_teacher_gen.py` →
+`teacher_captions.json`, 1 981 targets, ~11.5 palabras) y el alumno se entrena con ellas SIN prefijo
+(`baseline_blip_distill.py --teacher-cache`). Mismas imágenes que la Fase 4; única variable: el target.
+
+| Modelo (CIDEr) | Global | Con texto | Sin texto | Dep. inferencia |
+|----------------|-------:|----------:|----------:|-----------------|
+| Control                  | 55.14 | 52.28 | 62.86 | ninguna |
+| Fase 3 (ADE prefijo)     | **56.99** | **54.84** | 63.26 | Landing AI/img 💰 |
+| Fase 4 (prosa ADE)       | 33.54 | 29.53 | 46.67 | ninguna |
+| **Fase 4b (profesor)**   | 54.19 | 50.89 | 63.31 | ninguna |
+
+**El estilo era el problema** (33.54 → 54.19; el subconjunto sin texto se recupera del todo). **Pero
+la destilación no aporta beneficio neto:** la 4b queda a la par del control (−0.9, dentro del ruido)
+y por debajo de la Fase 3. Se **neutraliza el daño, pero no se captura la ganancia.**
+
+**Conclusión del hilo de OCR (4 fases):** la ganancia de la descripción de ADE (+3.2 CIDEr en
+imágenes con texto) **solo se materializa con la señal fresca por-imagen en inferencia** (Fase 3, que
+paga ADE). Ni el OCR barato (Fase 2), ni destilar la prosa (Fase 4), ni destilar de un profesor
+estilo-matched (Fase 4b) la meten "gratis" en un modelo autónomo. El valor del VLM fuerte reside en
+su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pseudo-etiquetas.
+
 **Notas de entorno OCR:**
 - EasyOCR 1.7.2 **requiere OpenCV 4.x** (`opencv-python-headless<5`); con OpenCV 5 crashea en `resize`.
 - Algunas imágenes degradadas rompen EasyOCR (recorte vacío) → `run_easyocr` lo captura por imagen.
@@ -320,6 +373,10 @@ multimodal** de una herramienta fuerte sí ayuda (+3.2 CIDEr en imágenes con te
     **reanudables** (el caché OCR se guarda cada 100 imgs). Recuperación: `wsl --shutdown` y reintentar.
 13. **OCR-prefix en BLIP**: forzar `min_new_tokens` en generación; si no, un prefijo OCR ruidoso
     colapsa la salida a vacío. BOS del decoder = `[DEC]` (30522), EOS = `[SEP]` (102).
+14. **El test set no es evaluable localmente.** Captions de test oficialmente ocultas; el CSV usa
+    nombres originales que no mapean a los archivos renombrados. **Val es el held-out.** Lección:
+    validar un mapeo con 2 muestras no basta — probar también índices tardíos (0 y 100 alineaban
+    por casualidad, pero 5000/7000 no). `eval_test.py` queda como referencia, pero su GT es inválido.
 
 ---
 
@@ -328,9 +385,15 @@ multimodal** de una herramienta fuerte sí ayuda (+3.2 CIDEr en imágenes con te
 - [x] **OCR — Fase 1**: comparar EasyOCR vs Landing AI ADE (ver §6). Landing AI 3.4× más texto y más robusto.
 - [x] **OCR — Fase 2**: prefijo OCR (EasyOCR) en BLIP → **resultado negativo** (CIDEr −3.35, −4.31 en imágenes con texto). El OCR ruidoso perjudica.
 - [x] **OCR — Fase 3**: prefijo Landing AI ADE. Solo-texto sigue bajo el control; **ADE completo (descripción) SÍ mejora** (+2.5 global, **+3.2 en imágenes con texto**). Ayuda la descripción del VLM, no el OCR literal.
-- [ ] **OCR — Fase 4 (idea)**: destilación explícita desde ADE, o gatear la descripción solo cuando aporta; medir coste/beneficio en inferencia.
-- [ ] **Submission al test oficial** de VizWiz para una cifra comparable públicamente.
-- [ ] Escalar el fine-tuning: más épocas, LoRA de mayor rango, o afinar el encoder de visión.
+- [x] **OCR — Fase 4**: destilación (pseudo-captions de ADE) → **negativo** (CIDEr 55→34): contamina el estilo hacia la prosa verbosa de ADE. El conocimiento se transfiere pero el estilo arruina la métrica.
+- [x] **OCR — Fase 4b**: destilación estilo-matched (profesor = modelo Fase 3). Arregla el colapso de la Fase 4 (34→54) pero **queda a la par del control** — neutraliza el daño, no captura la ganancia. La ventaja de ADE solo es realizable pagándolo en inferencia (Fase 3).
+- [x] **Test set**: NO evaluable localmente. Las captions de test son oficialmente **ocultas** (VizWiz publica solo train/val). El CSV tiene captions TEST pero con nombres originales que **no mapean** a los archivos renombrados (se intentó un offset `20000+i` que falla; `test.json` no tiene captions con qué anclar por contenido). **Val es el conjunto de evaluación válido.**
+- [x] Escalar el fine-tuning: LoRA texto+visión (r=32) → **CIDEr 60.3 → 72.7 (+12.4)**. El encoder de
+  visión era el eje clave (`--target-modules query,value,qkv --lora-r 32 --save-steps 800`, reanudable).
+- [x] Escalar más: 2→4 épocas → CIDEr 72.7 → **74.6 (+1.9)**. Rendimientos decrecientes sin overfitting;
+  la palanca era la visión, no las épocas. (Una corrida crasheó con `CUDA error: unknown error` y se
+  **reanudó desde checkpoint** sin re-entrenar — el diseño reanudable funcionó.)
+- [ ] Escalar r=64 sobre texto+visión, o afinar hiperparámetros (lr, dropout) si se busca exprimir más.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---

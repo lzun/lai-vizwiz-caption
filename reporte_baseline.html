@@ -196,19 +196,19 @@
 <!-- HEADLINE -->
 <section>
   <div class="headline">
-    <div class="bignum">60.3<small>CIDEr en val</small></div>
+    <div class="bignum">74.6<small>CIDEr en val</small></div>
     <div class="say">
-      El modelo fine-tuneado alcanza <b>CIDEr 60.3</b> sobre validación, dentro del
-      rango reportado en el paper original (~59–61) — partiendo de <b>43.5</b> del
-      modelo base sin adaptar. El fine-tuning con LoRA ajusta solo el
-      <b>0.52%</b> de los parámetros.
+      El mejor modelo alcanza <b>CIDEr 74.6</b> sobre validación, partiendo de <b>43.5</b>
+      del modelo base sin adaptar. El salto decisivo fue aplicar LoRA también al
+      <b>encoder de visión</b> (+12.4 sobre el baseline solo-texto de 60.3); estirar de 2 a
+      4 épocas solo sumó +1.9 más. Todo con un <b>1.56%</b> de los parámetros, en 8&nbsp;GB.
     </div>
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="n">+16.8</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
-    <div class="stat"><div class="n">1.18<span class="u">M</span></div><div class="k">Parámetros entrenables (de 225M)</div></div>
-    <div class="stat"><div class="n">76<span class="u">min</span></div><div class="k">Entrenamiento full en la RTX 5060</div></div>
+    <div class="stat"><div class="n">+31.1</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
+    <div class="stat"><div class="n">3.54<span class="u">M</span></div><div class="k">Parámetros entrenables (de 227M)</div></div>
+    <div class="stat"><div class="n">104<span class="u">min</span></div><div class="k">Entrenamiento en la RTX 5060 (8 GB)</div></div>
     <div class="stat"><div class="n">100.6<span class="u">k</span></div><div class="k">Pares imagen–caption (train limpio)</div></div>
   </div>
 </section>
@@ -269,48 +269,58 @@
 <section>
   <div class="sec-head"><span class="sec-num">04</span><h2>Resultados</h2></div>
   <p class="measure lead">Evaluación sobre 2 000 imágenes de val con búsqueda por haces (beam = 3).
-  Tres modelos: BLIP sin adaptar, LoRA sobre un subconjunto, y LoRA sobre el train completo.</p>
+  De BLIP sin adaptar, a LoRA sobre el texto, hasta aplicar LoRA también al <strong>encoder de visión</strong>.</p>
 
   <div class="tablecard"><div class="scroll">
     <table>
       <thead><tr><th>Modelo</th><th>CIDEr</th><th>BLEU-4</th><th>BLEU-1</th><th>ROUGE-L</th></tr></thead>
       <tbody>
         <tr><td>BLIP base <span class="rowtag">sin fine-tuning</span></td><td>43.49</td><td>20.87</td><td>63.27</td><td>43.09</td></tr>
-        <tr><td>LoRA · 20k pares · 2 épocas</td><td>54.40</td><td>22.59</td><td>65.57</td><td>45.99</td></tr>
-        <tr class="best"><td>LoRA · train completo · 3 épocas</td><td class="cap">60.28</td><td class="cap">24.26</td><td>67.18</td><td>46.83</td></tr>
+        <tr><td>LoRA texto · 20k pares · 2 épocas</td><td>54.40</td><td>22.59</td><td>65.57</td><td>45.99</td></tr>
+        <tr><td>LoRA texto · train completo · 3 épocas</td><td>60.28</td><td>24.26</td><td>67.18</td><td>46.83</td></tr>
+        <tr class="best"><td>LoRA texto + visión <span class="rowtag">r=32 · full · 4 épocas</span></td><td class="cap">74.60</td><td class="cap">27.51</td><td>70.38</td><td>49.02</td></tr>
       </tbody>
     </table>
   </div></div>
 
   <div class="prog">
     <h3>Progresión de CIDEr</h3>
-    <p class="sub">Cada etapa suma: adaptar el dominio pesa más que escalar los datos, pero ambos aportan.</p>
+    <p class="sub">Adaptar el dominio pesa más que escalar los datos — y adaptar la <b>visión</b> es el mayor salto.</p>
     <div class="bar-row">
       <div class="bar-lab"><b>Base</b><br>sin FT</div>
-      <div class="track"><div class="fill base" style="width:62.1%"></div></div>
+      <div class="track"><div class="fill base" style="width:54.4%"></div></div>
       <div class="bar-val">43.5</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lab"><b>LoRA 20k</b><br>2 épocas</div>
-      <div class="track"><div class="fill" style="width:77.7%"></div></div>
+      <div class="bar-lab"><b>LoRA 20k</b><br>texto</div>
+      <div class="track"><div class="fill base" style="width:68.0%"></div></div>
       <div class="bar-val">54.4</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lab"><b>LoRA full</b><br>3 épocas</div>
-      <div class="track"><div class="fill" style="width:86.1%"></div></div>
+      <div class="bar-lab"><b>LoRA full</b><br>texto</div>
+      <div class="track"><div class="fill base" style="width:75.4%"></div></div>
       <div class="bar-val">60.3</div>
     </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>+ visión</b><br>r=32</div>
+      <div class="track"><div class="fill" style="width:93.3%"></div></div>
+      <div class="bar-val cap">74.6</div>
+    </div>
     <div class="bar-row" style="margin-top:14px">
-      <div class="bar-lab papermark">Paper original</div>
+      <div class="bar-lab papermark">Paper (test)</div>
       <div class="track" style="background:transparent">
-        <div style="position:absolute;left:84.3%;width:2.9%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
+        <div style="position:absolute;left:73.75%;width:2.5%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
       </div>
       <div class="bar-val papermark" style="color:var(--data)">59–61</div>
     </div>
-    <p class="sub" style="margin:16px 0 0">Escala 0–70 · CIDEr ×100</p>
+    <p class="sub" style="margin:16px 0 0">Escala 0–80 · CIDEr ×100 · la banda del paper es sobre test, no directamente comparable</p>
   </div>
 
-  <p class="muted" style="font-size:14px;margin-top:16px">Entrenamiento del modelo full: 3 épocas sobre 100 575 pares en <strong>4 559&nbsp;s (~76&nbsp;min)</strong> a 66 pares/s, con la loss bajando de 3.69 a 2.98.</p>
+  <p class="muted" style="font-size:14px;margin-top:16px">El mejor modelo aplica LoRA al texto y al
+  <strong>encoder de visión</strong> (r=32, 3.54M params), 4 épocas sobre 100 575 pares (batch 12,
+  VRAM 7.0/8.1&nbsp;GB, sin OOM). Adaptar el ViT al dominio aporta <strong>+12.4 CIDEr</strong> sobre el
+  baseline solo-texto (60.3 → 72.7 en 2 épocas); estirar a 4 épocas suma solo +1.9 (74.6) — la palanca
+  es la <strong>visión</strong>, no las épocas.</p>
 </section>
 
 <!-- 5 QUALITATIVE -->
@@ -396,6 +406,37 @@
     fuerte. En la práctica es <strong>destilación de un VLM</strong>, no OCR. Y su coste se traslada
     a la inferencia: requiere una llamada de pago por imagen.</p>
   </div>
+
+  <h3 style="font-family:'Spectral',serif;font-size:22px;margin:40px 0 4px">¿Se puede sin pagar ADE en inferencia? Destilación</h3>
+  <p class="measure" style="margin-top:8px">Si la descripción de ADE ayuda, ¿podemos hacer que BLIP
+  la <strong>interiorice</strong> en entrenamiento y luego generar solo, gratis? Se probó de dos formas,
+  usando la descripción como caption pseudo-objetivo extra (no como prefijo).</p>
+
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Enfoque</th><th>CIDEr global</th><th>Con texto</th><th>En inferencia</th></tr></thead>
+      <tbody>
+        <tr><td>Control</td><td>55.14</td><td>52.28</td><td>gratis</td></tr>
+        <tr><td>Landing AI · prefijo <span class="rowtag">Fase 3</span></td><td class="cap">56.99</td><td class="cap">54.84</td><td>paga ADE / img</td></tr>
+        <tr><td>Destilar prosa de ADE <span class="rowtag">Fase 4</span></td><td>33.54</td><td>29.53</td><td>gratis</td></tr>
+        <tr><td>Destilar profesor estilo-VizWiz <span class="rowtag">Fase 4b</span></td><td>54.19</td><td>50.89</td><td>gratis</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+
+  <div class="measure">
+    <p style="margin-top:24px"><strong>Fase 4 se hundió</strong> (CIDEr 55→34): al entrenar contra la
+    prosa verbosa de ADE (<em>"a close-up, slightly blurry photograph of…"</em>), BLIP adoptó ese estilo
+    en todas partes —incluso en imágenes sin texto— y dejó de coincidir con las captions humanas cortas.</p>
+    <p><strong>Fase 4b lo corrigió</strong> usando como profesor el propio modelo de la Fase 3, que ya
+    produce captions estilo-VizWiz: el colapso desaparece (34→54). <strong>Pero solo llega a la par del
+    control</strong>, no lo supera. Se <strong>neutraliza el daño, sin capturar la ganancia</strong>.</p>
+    <p style="border-left:3px solid var(--accent);padding-left:16px;color:var(--ink)">
+    <strong>Conclusión del hilo de OCR.</strong> La ventaja de la descripción de ADE (+3.2 CIDEr) solo
+    se materializa con su <strong>inferencia fresca por imagen</strong> (Fase 3, de pago). Ni el OCR
+    barato, ni destilar la prosa, ni destilar de un profesor estilo-matched la meten “gratis” en un
+    modelo autónomo: el valor del VLM fuerte reside en su inferencia, no en unas pocas pseudo-etiquetas.</p>
+  </div>
 </section>
 
 <!-- 7 NEXT -->
@@ -403,10 +444,10 @@
   <div class="sec-head"><span class="sec-num">07</span><h2>Límites y próximos pasos</h2></div>
   <div class="measure">
     <ul class="clean">
-      <li><b>Destilación desde el VLM.</b> El hallazgo del OCR apunta a entrenar contra las descripciones de un modelo fuerte como señal auxiliar —sin depender de él en inferencia.</li>
-      <li><b>Escalar el fine-tuning.</b> Más épocas, LoRA de mayor rango o afinar también el encoder de visión.</li>
-      <li><b>Submission oficial.</b> Generar captions del test set y enviarlas al reto VizWiz para una cifra comparable públicamente.</li>
+      <li><b>Escalar el fine-tuning.</b> Más épocas, LoRA de mayor rango o afinar también el encoder de visión — la dirección con más recorrido tras cerrar el hilo de OCR.</li>
+      <li><b>OCR como servicio opcional.</b> Dado que la ventaja de ADE solo existe en inferencia, ofrecerla como modo premium (con coste) frente al modelo autónomo gratis.</li>
       <li><b>Robustez a la calidad.</b> Augmentations que imiten blur/encuadre podrían ayudar en las imágenes más difíciles.</li>
+      <li><b>Evaluación.</b> El test es de referencias ocultas y no evaluable localmente; <b>val</b> es el conjunto de evaluación válido.</li>
     </ul>
   </div>
 </section>
@@ -415,7 +456,11 @@
 <section style="border-bottom:none">
   <div class="sec-head"><span class="sec-num">08</span><h2>Reproducibilidad</h2></div>
   <p class="measure">Todo corre desde Windows invocando el venv de WSL. Comandos principales:</p>
-<pre><span class="cm"># Entrenar el baseline completo (BLIP-base + LoRA)</span>
+<pre><span class="cm"># Mejor modelo: LoRA en texto + encoder de visión (r=32), reanudable</span>
+python baseline_blip_lora.py --epochs 4 --batch-size 12 --lora-r 32 --lora-alpha 64 \
+    --target-modules query,value,qkv --save-steps 800 --max-eval-samples 2000
+
+<span class="cm"># Baseline solo-texto (BLIP-base + LoRA)</span>
 python baseline_blip_lora.py --epochs 3 --batch-size 16 --max-eval-samples 2000
 
 <span class="cm"># Referencia del modelo base, sin fine-tuning</span>
@@ -425,7 +470,11 @@ python baseline_blip_lora.py --no-train --max-eval-samples 2000
 python infer_caption.py --split test --num 8 --random --compare --html demo.html
 
 <span class="cm"># OCR: prefijo con la descripción de Landing AI ADE (variante ganadora)</span>
-python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-clean ade_full</pre>
+python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-clean ade_full
+
+<span class="cm"># Destilación estilo-matched (Fase 4b): profesor -> alumno autónomo</span>
+python distill_teacher_gen.py --adapter ~/wizviz/runs/blip_ade_full
+python baseline_blip_distill.py --distill --teacher-cache teacher_captions.json</pre>
 
   <div class="files">
     <div class="file"><div class="fn">wizviz_captions.py</div><div class="fd">Loader HF datasets con limpieza (precanned / rejected).</div></div>
@@ -434,6 +483,7 @@ python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-cle
     <div class="file"><div class="fn">infer_caption.py</div><div class="fd">Inferencia y galería HTML de demostración.</div></div>
     <div class="file"><div class="fn">ocr_compare.py</div><div class="fd">Comparación EasyOCR vs Landing AI (Fase 1).</div></div>
     <div class="file"><div class="fn">baseline_blip_ocr.py</div><div class="fd">Captioning con prefijo OCR + eval por subconjunto.</div></div>
+    <div class="file"><div class="fn">baseline_blip_distill.py</div><div class="fd">Destilación: pseudo-captions como target (Fases 4 / 4b).</div></div>
   </div>
 </section>
 
