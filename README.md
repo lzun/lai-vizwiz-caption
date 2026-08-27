@@ -35,6 +35,8 @@ wizviz-caption/
 ├── baseline_blip_ocr.py          captioning con prefijo OCR + eval por subconjunto (Fases 2-3)
 ├── baseline_blip_distill.py      destilación: pseudo-captions como target (Fases 4 y 4b)
 ├── distill_teacher_gen.py        genera captions-profesor estilo-VizWiz (Fase 4b)
+├── run_ade_vision_phaseA.sh      experimento ADE+visión Fase A — ejecutado (§9)
+├── run_ade_vision_phaseB.sh      Fase B (full train, turnkey; requiere créditos) (§9)
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -393,12 +395,69 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 - [x] Escalar más: 2→4 épocas → CIDEr 72.7 → **74.6 (+1.9)**. Rendimientos decrecientes sin overfitting;
   la palanca era la visión, no las épocas. (Una corrida crasheó con `CUDA error: unknown error` y se
   **reanudó desde checkpoint** sin re-entrenar — el diseño reanudable funcionó.)
-- [ ] Escalar r=64 sobre texto+visión, o afinar hiperparámetros (lr, dropout) si se busca exprimir más.
+- [x] Escalar r=64 sobre texto+visión → CIDEr 74.02 (vs 74.60 con r=32): **no ayuda, saturado**. r=32 es
+  el punto dulce. Fin de los experimentos de encoder de visión. **Mejor config: texto+visión, r=32, 4 épocas.**
+- [x] Afinar hiperparámetros (r=32 fijo): **ningún cambio supera 74.60**. dropout 0.10 perjudica (70.6);
+  lr=2e-4 gana a 2 épocas (73.5 vs 72.7) pero **pierde a 4 épocas (73.7 vs 74.6)** — el ranking se
+  invierte, por eso se confirmó a 4 ép. **Óptimo: lr=1e-4, dropout=0.05, r=32, texto+visión, 4 épocas.**
+- [x] **Avenida ADE + visión — Fase A** (ver §9): **las señales se suman.** ADE aporta +4.5 CIDEr (texto)
+  sobre el modelo con visión — más que en solo-texto (+3.2). No es redundante. **Luz verde a la Fase B.**
+- [ ] **ADE + visión — Fase B**: escalar ADE al train completo (~11.8k créditos, hay ~5.5k → subset ~50k
+  o comprar más). ¿Se mantiene el delta al escalar? Objetivo ~78-79 CIDEr.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
 
-## 9. Referencias
+## 9. Avenida ADE + visión (terreno preparado, sin ejecutar)
+
+**Pregunta abierta:** la Fase 3 mostró que el prefijo ADE aporta +3.2 CIDEr, pero sobre el setup
+**débil** (20k, LoRA solo-texto, r=16). El escalado a 74.6 nunca recibió ADE. **¿Sigue aportando ADE
+cuando el modelo ya tiene fine-tuning del encoder de visión, o el vision-scaling ya capturó su valor
+(marcas/objetos), haciéndolo redundante?** Nunca se combinaron. Herramienta lista y verificada:
+`baseline_blip_ocr.py` ahora acepta `--target-modules query,value,qkv` (LoRA texto+visión),
+`--save-steps` (reanudable) y `--grad-checkpointing`.
+
+### Fase A — EJECUTADA (2026-08-27): las señales se SUMAN 🟢
+
+A/B sobre el subset de 20k (ADE ya cacheado → 0 créditos), ambos con LoRA texto+visión (r=32), 4 épocas:
+
+| CIDEr (20k, texto+visión) | Global | Con texto | Sin texto |
+|---------------------------|-------:|----------:|----------:|
+| control-visión (sin ADE)  | 64.73  | 63.03     | 68.59     |
+| **ade-visión (con ADE)**  | **68.86** | **67.55** | 71.38 |
+| **Δ ADE**                 | +4.13  | **+4.52** | +2.79     |
+
+**Veredicto: ADE y el vision-scaling se COMPLEMENTAN, no son redundantes.** El delta de ADE en imágenes
+con texto **creció** de +3.2 (Fase 3, solo-texto) a +4.52 (con visión) — el vision-scaling no capturó lo
+de ADE. Bonus: hasta el subconjunto *sin texto* mejoró (+2.79, aunque ahí no se inyecta ADE), porque
+entrenar con los prefijos mejoró los pesos compartidos. Reproducir: `run_ade_vision_phaseA.sh`.
+
+**Luz verde a la Fase B**: si el delta (~+4) se mantiene al escalar, full+visión+ADE podría rondar
+~78-79 CIDEr (vs 74.60 solo-visión). Matiz: los deltas pueden encogerse con más datos, y la variante
+ganadora seguiría pagando ADE en inferencia.
+
+### Fase B — escalar ADE al train completo (requiere créditos) — LISTA, sin ejecutar
+
+Fase A dio luz verde. La Fase B está **turnkey** en `run_ade_vision_phaseB.sh` (precómputo full +
+entrenamiento full+visión+ADE). Decisión del usuario (2026-08-27): **esperar a tener créditos para el
+full** antes de ejecutar.
+
+```bash
+wsl -e bash /mnt/c/Users/green/Documents/GitHub/wizviz-caption/run_ade_vision_phaseB.sh
+```
+
+**Cuenta de créditos** (≈1 crédito/imagen-con-texto): el train completo tiene ~14 700 imágenes con
+texto; ya hay ~2 900 cacheadas → faltan **~11 800**. Con ~5 500 disponibles **no alcanza para el full**
+→ hace falta comprar ~6 500 más. (El precómputo es reanudable, guarda cada 50 imágenes.)
+
+**Control de comparación** = el modelo solo-visión de 74.60 (`~/wizviz/runs/blip_scaled4`); para su
+desglose por texto/sin-texto, re-evaluarlo con `baseline_blip_ocr.py --no-train`. **Objetivo:** si el
+delta (~+4.5 en texto) se mantiene, full+visión+ADE ≈ **78-79 CIDEr**. Matiz: la variante ganadora
+**seguiría pagando ADE en inferencia** (trade-off de despliegue de la Fase 3).
+
+---
+
+## 10. Referencias
 
 - D. Gurari, Y. Zhao, M. Zhang, N. Bhattacharya. *Captioning Images Taken by People Who Are Blind.*
   ECCV 2020. (`2002.08565v2.pdf`) · <https://vizwiz.org>

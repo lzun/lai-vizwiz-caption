@@ -149,6 +149,7 @@ def main():
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--lora-alpha", type=int, default=32)
+    p.add_argument("--lora-dropout", type=float, default=0.05)
     p.add_argument("--max-new-tokens", type=int, default=30)
     p.add_argument("--num-beams", type=int, default=3)
     p.add_argument("--max-train-samples", type=int, default=0)
@@ -193,7 +194,7 @@ def main():
 
         targets = [t.strip() for t in args.target_modules.split(",") if t.strip()]
         lora = LoraConfig(
-            r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=0.05, bias="none",
+            r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout, bias="none",
             target_modules=targets,  # texto (query/value) y opcionalmente visión (qkv)
         )
         model = get_peft_model(model, lora)
