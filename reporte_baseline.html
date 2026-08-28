@@ -464,6 +464,13 @@
   subset. <strong>ADE y el fine-tuning de visión son ejes complementarios</strong> —adaptar <em>cómo ve</em>
   el modelo y darle <em>contexto de lectura</em> se suman, no se solapan. Es el mejor resultado del
   proyecto (78.7), con el trade-off explícito: rinde más, pero deja de ser autónomo.</p>
+
+  <p class="muted measure" style="font-size:14px;margin-top:20px"><strong>Nota de completitud.</strong>
+  Por rigor se probó también <strong>EasyOCR + visión</strong> (mismo subset de 20k con encoder de
+  visión): sigue <strong>perjudicando</strong> (CIDEr con texto 60.0 vs 63.0 del control-visión), aunque
+  el daño se amortigua respecto al setup solo-texto. Así el orden <strong>EasyOCR &lt; control &lt;
+  Landing&nbsp;AI ADE</strong> se replica en <em>ambos</em> regímenes: no basta con “tener OCR” —
+  <strong>la calidad del OCR es decisiva</strong>.</p>
 </section>
 
 <!-- 7 NEXT -->

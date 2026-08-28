@@ -422,13 +422,16 @@ cuando el modelo ya tiene fine-tuning del encoder de visión, o el vision-scalin
 
 A/B sobre el subset de 20k (ADE ya cacheado → 0 créditos), ambos con LoRA texto+visión (r=32), 4 épocas:
 
-| CIDEr (20k, texto+visión) | Global | Con texto | Sin texto |
-|---------------------------|-------:|----------:|----------:|
-| control-visión (sin ADE)  | 64.73  | 63.03     | 68.59     |
-| **ade-visión (con ADE)**  | **68.86** | **67.55** | 71.38 |
-| **Δ ADE**                 | +4.13  | **+4.52** | +2.79     |
+| CIDEr (20k, texto+visión, 4 ép) | Global | Con texto | Sin texto | Δ texto vs control |
+|---------------------------------|-------:|----------:|----------:|-------------------:|
+| easyocr-visión (OCR ruidoso)    | 62.51  | 59.99     | 69.22     | −3.04 |
+| control-visión (sin OCR)        | 64.73  | 63.03     | 68.59     | — |
+| **ade-visión (Landing AI)**     | **68.86** | **67.55** | 71.38  | **+4.52** |
 
-**Veredicto: ADE y el vision-scaling se COMPLEMENTAN, no son redundantes.** El delta de ADE en imágenes
+**Veredicto: la CALIDAD del OCR es decisiva.** Orden monótono en ambos regímenes (solo-texto y visión):
+EasyOCR < control < Landing AI ADE. EasyOCR sigue perjudicando con visión (−3.04), aunque el daño se
+**amortigua** vs solo-texto (−4.31 en Fase 2) — mejores features visuales ignoran mejor el ruido, pero
+no lo vuelven útil. **ADE y el vision-scaling se COMPLEMENTAN, no son redundantes.** El delta de ADE en imágenes
 con texto **creció** de +3.2 (Fase 3, solo-texto) a +4.52 (con visión) — el vision-scaling no capturó lo
 de ADE. Bonus: hasta el subconjunto *sin texto* mejoró (+2.79, aunque ahí no se inyecta ADE), porque
 entrenar con los prefijos mejoró los pesos compartidos. Reproducir: `run_ade_vision_phaseA.sh`.
