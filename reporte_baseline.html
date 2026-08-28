@@ -196,19 +196,20 @@
 <!-- HEADLINE -->
 <section>
   <div class="headline">
-    <div class="bignum">74.6<small>CIDEr en val</small></div>
+    <div class="bignum">78.7<small>CIDEr en val · con ADE</small></div>
     <div class="say">
-      El mejor modelo alcanza <b>CIDEr 74.6</b> sobre validación, partiendo de <b>43.5</b>
-      del modelo base sin adaptar. El salto decisivo fue aplicar LoRA también al
-      <b>encoder de visión</b> (+12.4 sobre el baseline solo-texto de 60.3); estirar de 2 a
-      4 épocas solo sumó +1.9 más. Todo con un <b>1.56%</b> de los parámetros, en 8&nbsp;GB.
+      Dos "mejores" según el criterio. <b>Absoluto: CIDEr 78.7</b> combinando fine-tuning
+      del <b>encoder de visión</b> + las descripciones de <b>Landing&nbsp;AI ADE</b> como
+      prefijo — requiere pagar ADE por imagen en inferencia. <b>Autónomo: CIDEr 74.6</b>
+      (solo-visión, gratis y local). Ambos parten de <b>43.5</b> del modelo base, con un
+      <b>1.56%</b> de los parámetros, en una laptop de 8&nbsp;GB.
     </div>
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="n">+31.1</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
-    <div class="stat"><div class="n">3.54<span class="u">M</span></div><div class="k">Parámetros entrenables (de 227M)</div></div>
-    <div class="stat"><div class="n">104<span class="u">min</span></div><div class="k">Entrenamiento en la RTX 5060 (8 GB)</div></div>
+    <div class="stat"><div class="n">+35.2</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
+    <div class="stat"><div class="n">1.56<span class="u">%</span></div><div class="k">Parámetros entrenables (LoRA)</div></div>
+    <div class="stat"><div class="n">8<span class="u">GB</span></div><div class="k">VRAM de la laptop (RTX 5060)</div></div>
     <div class="stat"><div class="n">100.6<span class="u">k</span></div><div class="k">Pares imagen–caption (train limpio)</div></div>
   </div>
 </section>
@@ -285,42 +286,47 @@
 
   <div class="prog">
     <h3>Progresión de CIDEr</h3>
-    <p class="sub">Adaptar el dominio pesa más que escalar los datos — y adaptar la <b>visión</b> es el mayor salto.</p>
+    <p class="sub">Cada eje es ortogonal y aporta: texto, luego <b>visión</b> (el mayor salto), luego <b>ADE</b>.</p>
     <div class="bar-row">
       <div class="bar-lab"><b>Base</b><br>sin FT</div>
-      <div class="track"><div class="fill base" style="width:54.4%"></div></div>
+      <div class="track"><div class="fill base" style="width:51.2%"></div></div>
       <div class="bar-val">43.5</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LoRA 20k</b><br>texto</div>
-      <div class="track"><div class="fill base" style="width:68.0%"></div></div>
+      <div class="track"><div class="fill base" style="width:64.0%"></div></div>
       <div class="bar-val">54.4</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LoRA full</b><br>texto</div>
-      <div class="track"><div class="fill base" style="width:75.4%"></div></div>
+      <div class="track"><div class="fill base" style="width:70.9%"></div></div>
       <div class="bar-val">60.3</div>
     </div>
     <div class="bar-row">
-      <div class="bar-lab"><b>+ visión</b><br>r=32</div>
-      <div class="track"><div class="fill" style="width:93.3%"></div></div>
-      <div class="bar-val cap">74.6</div>
+      <div class="bar-lab"><b>+ visión</b><br>autónomo</div>
+      <div class="track"><div class="fill base" style="width:87.8%"></div></div>
+      <div class="bar-val">74.6</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-lab"><b>+ ADE</b><br>con pago</div>
+      <div class="track"><div class="fill" style="width:92.6%"></div></div>
+      <div class="bar-val cap">78.7</div>
     </div>
     <div class="bar-row" style="margin-top:14px">
       <div class="bar-lab papermark">Paper (test)</div>
       <div class="track" style="background:transparent">
-        <div style="position:absolute;left:73.75%;width:2.5%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
+        <div style="position:absolute;left:69.4%;width:2.4%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
       </div>
       <div class="bar-val papermark" style="color:var(--data)">59–61</div>
     </div>
-    <p class="sub" style="margin:16px 0 0">Escala 0–80 · CIDEr ×100 · la banda del paper es sobre test, no directamente comparable</p>
+    <p class="sub" style="margin:16px 0 0">Escala 0–85 · CIDEr ×100 · la banda del paper es sobre test, no directamente comparable</p>
   </div>
 
-  <p class="muted" style="font-size:14px;margin-top:16px">El mejor modelo aplica LoRA al texto y al
-  <strong>encoder de visión</strong> (r=32, 3.54M params), 4 épocas sobre 100 575 pares (batch 12,
-  VRAM 7.0/8.1&nbsp;GB, sin OOM). Adaptar el ViT al dominio aporta <strong>+12.4 CIDEr</strong> sobre el
-  baseline solo-texto (60.3 → 72.7 en 2 épocas); estirar a 4 épocas suma solo +1.9 (74.6) — la palanca
-  es la <strong>visión</strong>, no las épocas.</p>
+  <p class="muted" style="font-size:14px;margin-top:16px">El modelo <strong>autónomo</strong> (74.6) aplica
+  LoRA al texto y al <strong>encoder de visión</strong> (r=32, 3.54M params, 4 épocas, VRAM 7.0/8.1&nbsp;GB
+  sin OOM): adaptar el ViT aporta <strong>+12.4 CIDEr</strong> sobre solo-texto — la palanca es la visión,
+  no las épocas (2→4 solo +1.9) ni el rango (r=64 no ayuda). Sumar el prefijo <strong>ADE</strong> encima
+  lleva al <strong>78.7</strong> absoluto (ver §6), a cambio de pagar ADE en inferencia.</p>
 </section>
 
 <!-- 5 QUALITATIVE -->
@@ -437,6 +443,27 @@
     barato, ni destilar la prosa, ni destilar de un profesor estilo-matched la meten “gratis” en un
     modelo autónomo: el valor del VLM fuerte reside en su inferencia, no en unas pocas pseudo-etiquetas.</p>
   </div>
+
+  <h3 style="font-family:'Spectral',serif;font-size:22px;margin:40px 0 4px">Epílogo: ADE + visión, a escala completa</h3>
+  <p class="measure" style="margin-top:8px">Si ADE se paga en inferencia de todos modos, ¿cuánto rinde
+  <strong>combinado con el fine-tuning de visión</strong> sobre el train completo? Se precomputó ADE para
+  las ~11.7k imágenes-con-texto restantes y se entrenó el modelo full con visión <em>y</em> prefijo ADE.</p>
+
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Modelo (train completo)</th><th>CIDEr global</th><th>Con texto</th><th>En inferencia</th></tr></thead>
+      <tbody>
+        <tr><td>Solo-visión <span class="rowtag">mejor autónomo</span></td><td>74.60</td><td>—</td><td>gratis</td></tr>
+        <tr class="best"><td>Visión + ADE <span class="rowtag">mejor absoluto</span></td><td class="cap">78.68</td><td class="cap">78.36</td><td>paga ADE / img</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+
+  <p class="measure" style="margin-top:20px">El delta de ADE <strong>se mantuvo al escalar</strong>:
+  <strong>+4.08 CIDEr</strong> sobre el modelo solo-visión, confirmando en full train lo que se vio en el
+  subset. <strong>ADE y el fine-tuning de visión son ejes complementarios</strong> —adaptar <em>cómo ve</em>
+  el modelo y darle <em>contexto de lectura</em> se suman, no se solapan. Es el mejor resultado del
+  proyecto (78.7), con el trade-off explícito: rinde más, pero deja de ser autónomo.</p>
 </section>
 
 <!-- 7 NEXT -->
@@ -474,7 +501,10 @@ python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-cle
 
 <span class="cm"># Destilación estilo-matched (Fase 4b): profesor -> alumno autónomo</span>
 python distill_teacher_gen.py --adapter ~/wizviz/runs/blip_ade_full
-python baseline_blip_distill.py --distill --teacher-cache teacher_captions.json</pre>
+python baseline_blip_distill.py --distill --teacher-cache teacher_captions.json
+
+<span class="cm"># Mejor absoluto (78.7): visión + ADE, train completo (requiere créditos ADE)</span>
+bash run_ade_vision_phaseB.sh</pre>
 
   <div class="files">
     <div class="file"><div class="fn">wizviz_captions.py</div><div class="fd">Loader HF datasets con limpieza (precanned / rejected).</div></div>
@@ -484,6 +514,7 @@ python baseline_blip_distill.py --distill --teacher-cache teacher_captions.json<
     <div class="file"><div class="fn">ocr_compare.py</div><div class="fd">Comparación EasyOCR vs Landing AI (Fase 1).</div></div>
     <div class="file"><div class="fn">baseline_blip_ocr.py</div><div class="fd">Captioning con prefijo OCR + eval por subconjunto.</div></div>
     <div class="file"><div class="fn">baseline_blip_distill.py</div><div class="fd">Destilación: pseudo-captions como target (Fases 4 / 4b).</div></div>
+    <div class="file"><div class="fn">run_ade_vision_phaseB.sh</div><div class="fd">Mejor absoluto (78.7): visión + ADE, train completo.</div></div>
   </div>
 </section>
 

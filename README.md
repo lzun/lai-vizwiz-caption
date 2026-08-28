@@ -402,8 +402,9 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
   invierte, por eso se confirmó a 4 ép. **Óptimo: lr=1e-4, dropout=0.05, r=32, texto+visión, 4 épocas.**
 - [x] **Avenida ADE + visión — Fase A** (ver §9): **las señales se suman.** ADE aporta +4.5 CIDEr (texto)
   sobre el modelo con visión — más que en solo-texto (+3.2). No es redundante. **Luz verde a la Fase B.**
-- [ ] **ADE + visión — Fase B**: escalar ADE al train completo (~11.8k créditos, hay ~5.5k → subset ~50k
-  o comprar más). ¿Se mantiene el delta al escalar? Objetivo ~78-79 CIDEr.
+- [x] **ADE + visión — Fase B** (train completo): **el delta se mantiene → CIDEr 78.68** (+4.08 sobre
+  74.60 solo-visión). Tesis validada a escala. Mejor absoluto del proyecto (de pago en inferencia);
+  mejor autónomo sigue siendo 74.60 (gratis).
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
@@ -433,8 +434,22 @@ de ADE. Bonus: hasta el subconjunto *sin texto* mejoró (+2.79, aunque ahí no s
 entrenar con los prefijos mejoró los pesos compartidos. Reproducir: `run_ade_vision_phaseA.sh`.
 
 **Luz verde a la Fase B**: si el delta (~+4) se mantiene al escalar, full+visión+ADE podría rondar
-~78-79 CIDEr (vs 74.60 solo-visión). Matiz: los deltas pueden encogerse con más datos, y la variante
-ganadora seguiría pagando ADE en inferencia.
+~78-79 CIDEr (vs 74.60 solo-visión).
+
+### Fase B — EJECUTADA (2026-08-27): el delta se mantiene 🏆
+
+Precómputo ADE del train completo (11 729 imágenes nuevas, 0 fallos, ~11.7k créditos) + entrenamiento
+full+visión+ADE (r=32, 4 épocas). **CIDEr val: all 78.68 · con texto 78.36 · sin texto 77.14.**
+
+| Modelo (val) | CIDEr all | Con texto | Inferencia |
+|--------------|----------:|----------:|------------|
+| Solo-visión (mejor autónomo) | 74.60 | — | gratis |
+| **Visión + ADE (mejor absoluto)** | **78.68** | **78.36** | ADE/img (pago) |
+
+**Tesis validada a escala: +4.08 CIDEr sobre solo-visión**, dentro del ~78-79 proyectado en Fase A. ADE
+y el fine-tuning de visión se complementan también con train completo. **Matiz de despliegue:** este
+modelo requiere llamar a Landing AI por imagen en inferencia (coste + latencia + dependencia). Dos
+"mejores" según criterio: **absoluto 78.68** (de pago) vs **autónomo 74.60** (gratis, local).
 
 ### Fase B — escalar ADE al train completo (requiere créditos) — LISTA, sin ejecutar
 
