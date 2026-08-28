@@ -453,6 +453,7 @@
     <table>
       <thead><tr><th>Modelo (train completo)</th><th>CIDEr global</th><th>Con texto</th><th>En inferencia</th></tr></thead>
       <tbody>
+        <tr><td>EasyOCR + visión <span class="rowtag">OCR ruidoso</span></td><td>70.33</td><td>68.35</td><td>gratis</td></tr>
         <tr><td>Solo-visión <span class="rowtag">mejor autónomo</span></td><td>74.60</td><td>—</td><td>gratis</td></tr>
         <tr class="best"><td>Visión + ADE <span class="rowtag">mejor absoluto</span></td><td class="cap">78.68</td><td class="cap">78.36</td><td>paga ADE / img</td></tr>
       </tbody>
@@ -466,11 +467,12 @@
   proyecto (78.7), con el trade-off explícito: rinde más, pero deja de ser autónomo.</p>
 
   <p class="muted measure" style="font-size:14px;margin-top:20px"><strong>Nota de completitud.</strong>
-  Por rigor se probó también <strong>EasyOCR + visión</strong> (mismo subset de 20k con encoder de
-  visión): sigue <strong>perjudicando</strong> (CIDEr con texto 60.0 vs 63.0 del control-visión), aunque
-  el daño se amortigua respecto al setup solo-texto. Así el orden <strong>EasyOCR &lt; control &lt;
-  Landing&nbsp;AI ADE</strong> se replica en <em>ambos</em> regímenes: no basta con “tener OCR” —
-  <strong>la calidad del OCR es decisiva</strong>.</p>
+  La tabla incluye <strong>EasyOCR + visión</strong> por rigor: el OCR ruidoso <strong>resta −4.3</strong>
+  (70.3 vs 74.6), casi el espejo del <strong>+4.1</strong> que suma ADE. El orden <strong>EasyOCR &lt;
+  control &lt; Landing&nbsp;AI ADE</strong> se replica en <em>ambos</em> regímenes (subset de 20k y train
+  completo). Y el daño de EasyOCR <em>crece</em> al escalar (−2.2 → −4.3): el prefijo ruidoso también
+  limita cuánto aprovecha el modelo de más datos. No basta con “tener OCR” — <strong>la calidad del OCR
+  es decisiva</strong>.</p>
 </section>
 
 <!-- 7 NEXT -->

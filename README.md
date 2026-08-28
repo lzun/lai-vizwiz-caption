@@ -37,6 +37,7 @@ wizviz-caption/
 ├── distill_teacher_gen.py        genera captions-profesor estilo-VizWiz (Fase 4b)
 ├── run_ade_vision_phaseA.sh      experimento ADE+visión Fase A — ejecutado (§9)
 ├── run_ade_vision_phaseB.sh      Fase B (full train, turnkey; requiere créditos) (§9)
+├── baseline_git.py               prototipo GIT-large (VLM alternativo a BLIP)
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -405,6 +406,9 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 - [x] **ADE + visión — Fase B** (train completo): **el delta se mantiene → CIDEr 78.68** (+4.08 sobre
   74.60 solo-visión). Tesis validada a escala. Mejor absoluto del proyecto (de pago en inferencia);
   mejor autónomo sigue siendo 74.60 (gratis).
+- [x] **VLM alternativo — GIT-large** (`baseline_git.py`, prototipo 20k): **CIDEr 69.26** (texto+visión,
+  r=16) vs BLIP 64.73 → **+4.5 sobre BLIP autónomo**, y **≈ BLIP+ADE (68.86, de pago)** SIN OCR externo.
+  Un backbone más fuerte captura lo de ADE gratis. Pendiente: escalar GIT a full (¿supera el 78.7 autónomamente?).
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
@@ -444,10 +448,16 @@ entrenar con los prefijos mejoró los pesos compartidos. Reproducir: `run_ade_vi
 Precómputo ADE del train completo (11 729 imágenes nuevas, 0 fallos, ~11.7k créditos) + entrenamiento
 full+visión+ADE (r=32, 4 épocas). **CIDEr val: all 78.68 · con texto 78.36 · sin texto 77.14.**
 
-| Modelo (val) | CIDEr all | Con texto | Inferencia |
-|--------------|----------:|----------:|------------|
-| Solo-visión (mejor autónomo) | 74.60 | — | gratis |
-| **Visión + ADE (mejor absoluto)** | **78.68** | **78.36** | ADE/img (pago) |
+| Modelo full-train (texto+visión, 4 ép) | CIDEr all | Con texto | Δ vs control | Inferencia |
+|----------------------------------------|----------:|----------:|-------------:|------------|
+| EasyOCR + visión (OCR ruidoso)         | 70.33     | 68.35     | −4.27        | gratis |
+| Solo-visión (mejor autónomo)           | 74.60     | —         | —            | gratis |
+| **Visión + ADE (mejor absoluto)**      | **78.68** | **78.36** | +4.08        | ADE/img (pago) |
+
+**Simetría casi perfecta:** OCR malo resta ~−4.3, OCR bueno suma ~+4.1 — espejo alrededor del control.
+El orden EasyOCR < control < ADE se replica en **ambos regímenes** (20k y full). Matiz que emerge a
+escala: el daño de EasyOCR **crece** (−2.2 en 20k → −4.3 en full) porque el prefijo ruidoso limita
+cuánto exprime el modelo de más datos (control gana +9.9 de 20k→full; EasyOCR solo +7.8).
 
 **Tesis validada a escala: +4.08 CIDEr sobre solo-visión**, dentro del ~78-79 proyectado en Fase A. ADE
 y el fine-tuning de visión se complementan también con train completo. **Matiz de despliegue:** este

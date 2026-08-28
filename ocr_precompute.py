@@ -36,6 +36,8 @@ def main():
     p.add_argument("--train-pairs", type=int, default=20000)
     p.add_argument("--val-images", type=int, default=2000)
     p.add_argument("--out", default="ocr_cache_easyocr.json")
+    p.add_argument("--text-only", action="store_true",
+                   help="procesar solo imágenes con text_detected (más rápido, como ADE)")
     args = p.parse_args()
     root = str(Path(__file__).resolve().parent)
 
@@ -43,12 +45,15 @@ def main():
     targets: dict[str, str] = {}
     tr = load_wizviz_captions(root=root, splits=("train",), format="exploded", with_images=False)["train"]
     sub = tr.select(range(min(args.train_pairs, len(tr))))
-    for fn, pth in zip(sub["file_name"], sub["image_path"]):
-        targets[fn] = pth
+    for fn, pth, td in zip(sub["file_name"], sub["image_path"], sub["text_detected"]):
+        if not args.text_only or td:
+            targets[fn] = pth
     val = load_wizviz_captions(root=root, splits=("val",), format="grouped", with_images=False)["val"]
-    for fn, pth in zip(val["file_name"][: args.val_images], val["image_path"][: args.val_images]):
-        targets[fn] = pth
-    print(f"imágenes únicas objetivo: {len(targets)}")
+    for fn, pth, td in zip(val["file_name"][: args.val_images], val["image_path"][: args.val_images],
+                           val["text_detected"][: args.val_images]):
+        if not args.text_only or td:
+            targets[fn] = pth
+    print(f"imágenes únicas objetivo: {len(targets)}" + (" (solo text_detected)" if args.text_only else ""))
 
     cache = {}
     out = Path(args.out)
