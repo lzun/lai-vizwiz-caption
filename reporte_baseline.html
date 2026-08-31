@@ -485,6 +485,15 @@
       <li><b>Robustez a la calidad.</b> Augmentations que imiten blur/encuadre podrían ayudar en las imágenes más difíciles.</li>
       <li><b>Evaluación.</b> El test es de referencias ocultas y no evaluable localmente; <b>val</b> es el conjunto de evaluación válido.</li>
     </ul>
+    <p class="muted" style="font-size:14px;margin-top:18px"><strong>Alternativas de VLM exploradas.</strong>
+    <strong>GIT-large</strong>: en 20k <em>superaba</em> a BLIP (69.3 vs 64.7) pero la ventaja no se
+    sostuvo — a train completo con rango pareado (r=32) llega a <strong>73.9</strong>, cuasi-empate con
+    BLIP solo-visión (74.6). <strong>Qwen2.5-VL-3B</strong> (QLoRA 4-bit en 8 GB, ~14× más lento): su
+    prior bilingüe <em>fuga chino</em> en 26 % de captions (hundía el CIDEr); forzando salida en inglés
+    llega a <strong>63.6</strong> (20k) — mejor que BLIP en imágenes con texto, peor sin texto, sin
+    superar a GIT/BLIP. <strong>Ningún VLM alternativo destrona a BLIP</strong> para este task en 8 GB.
+    Lecciones: un prototipo de bajo dato puede engañar (validar a escala y con hiperparámetros pareados);
+    los VLM bilingües fugan idioma y hay que restringirlo. El podio no cambia.</p>
   </div>
 </section>
 
@@ -524,6 +533,7 @@ bash run_ade_vision_phaseB.sh</pre>
     <div class="file"><div class="fn">baseline_blip_ocr.py</div><div class="fd">Captioning con prefijo OCR + eval por subconjunto.</div></div>
     <div class="file"><div class="fn">baseline_blip_distill.py</div><div class="fd">Destilación: pseudo-captions como target (Fases 4 / 4b).</div></div>
     <div class="file"><div class="fn">run_ade_vision_phaseB.sh</div><div class="fd">Mejor absoluto (78.7): visión + ADE, train completo.</div></div>
+    <div class="file"><div class="fn">baseline_git.py</div><div class="fd">VLM alternativo GIT-large (explorado, no gana a escala).</div></div>
   </div>
 </section>
 

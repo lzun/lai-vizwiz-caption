@@ -1,11 +1,19 @@
 # VizWiz-Captions — Experimentos de Image Captioning
 
-Bitácora del proyecto: dataset, entorno, baseline con fine-tuning (BLIP + LoRA),
-resultados y lecciones aprendidas. Última actualización: **2026-08-24**.
+Bitácora del proyecto: dataset, entorno, fine-tuning (BLIP + LoRA), OCR, escalado y
+alternativas de VLM. Última actualización: **2026-08-29**.
 
-> **TL;DR** — Fine-tuning de BLIP-base con LoRA sobre VizWiz-Captions, entrenado en
-> una laptop RTX 5060 (8 GB) **dentro de WSL2**. Mejor resultado: **CIDEr 60.3** en val
-> (el modelo base sin adaptar da 43.5; el paper original reporta ~59–61).
+> **TL;DR** — Image captioning sobre VizWiz-Captions, todo con LoRA en una laptop RTX 5060
+> (8 GB) **dentro de WSL2**. Partiendo de BLIP-base (CIDEr 43.5 sin adaptar):
+> - 🥇 **Mejor absoluto: CIDEr 78.7** (val) — BLIP + fine-tuning de visión + prefijo de descripción
+>   de Landing AI ADE. Requiere pagar ADE por imagen en inferencia.
+> - 🥈 **Mejor autónomo: CIDEr 74.6** (val) — BLIP + fine-tuning de visión (LoRA texto+visión, r=32),
+>   gratis y local.
+>
+> **Hallazgos clave:** la palanca decisiva es adaptar el **encoder de visión** (+12.4); la **calidad
+> del OCR es decisiva** (EasyOCR resta, ADE suma; simetría ~±4); ADE y visión se **complementan** (no
+> son redundantes); en VizWiz gana la **descripción**, no la transcripción literal. GIT-large como
+> backbone alternativo cuasi-empata a BLIP a escala. Ver §5–§9.
 
 ---
 
@@ -38,6 +46,8 @@ wizviz-caption/
 ├── run_ade_vision_phaseA.sh      experimento ADE+visión Fase A — ejecutado (§9)
 ├── run_ade_vision_phaseB.sh      Fase B (full train, turnkey; requiere créditos) (§9)
 ├── baseline_git.py               prototipo GIT-large (VLM alternativo a BLIP)
+├── baseline_qwen.py              prototipo Qwen2.5-VL-3B (QLoRA 4-bit)
+├── eval_qwen.py                  re-eval Qwen con inglés forzado / bloqueo CJK
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -216,6 +226,10 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
   ángulos raros) pesa mucho más que solo adaptar el decoder de texto.
 - Entrenamiento texto full: 3 épocas en ~76 min. Escalado (texto+visión): 2 épocas en **~104 min**
   (32 pares/s, VRAM 7.0/8.1 GB sin OOM, batch 12, grad-checkpointing no-reentrante disponible).
+- **74.60 es el mejor modelo AUTÓNOMO** (gratis en inferencia). Sumar el prefijo de descripción de
+  Landing AI ADE lo lleva a **78.68** (mejor absoluto, pero de pago en inferencia) — ver §6.
+- Ejes ya explorados y saturados: rango (r=32 óptimo, r=64 no ayuda), épocas (4, rendimientos
+  decrecientes), lr (1e-4), dropout (0.05). Ver checklist en §8.
 
 **Ejemplo cualitativo** (mejora de dominio):
 `base: "a person holding a bottle of liquid"` → `fine-tuned: "a person is holding a bottle of medicine"`.
@@ -230,7 +244,7 @@ Evaluación sobre **2 000 imágenes de val**, beam = 3.
 
 ---
 
-## 6. Exploración de OCR (Fases 1–4)
+## 6. Exploración de OCR (Fases 1–4b)
 
 El 63 % de imágenes tienen texto, así que se exploró añadir OCR. Se comparan dos motores sobre
 **30 imágenes de val con `text_detected`** (`ocr_compare.py` → galería `ocr_compare.html`).
@@ -380,6 +394,16 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
     nombres originales que no mapean a los archivos renombrados. **Val es el held-out.** Lección:
     validar un mapeo con 2 muestras no basta — probar también índices tardíos (0 y 100 alineaban
     por casualidad, pero 5000/7000 no). `eval_test.py` queda como referencia, pero su GT es inválido.
+15. **Vision LoRA + grad-checkpointing**: usar `use_reentrant=False`; el `enable_input_require_grads`
+    choca con el `+=` in-place de los embeddings (pasa en BLIP y en GIT). O entrenar sin checkpointing
+    (batch 12 BLIP / batch 8 GIT caben en 8 GB).
+16. **La calidad del OCR es decisiva** (no basta "tener OCR"): EasyOCR resta ~−4, ADE suma ~+4, en
+    ambos regímenes. Y en VizWiz gana la **descripción de escena**, no la transcripción literal
+    (por eso EasyOCR/solo-texto/ADE-textonly restan; ADE-descripción suma).
+17. **Fijar SIEMPRE todos los hiperparámetros en comparativas.** Un `--grad-accum` por defecto metió
+    un confound (loss ×2 en logging + batch efectivo distinto); un `--lora-r` dispar sesgó GIT-vs-BLIP.
+18. **Un prototipo de bajo dato puede engañar.** GIT superaba a BLIP en 20k (+4.5) pero cuasi-empataba
+    a escala completa. Validar a escala Y con hiperparámetros pareados antes de concluir.
 
 ---
 
@@ -406,14 +430,26 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 - [x] **ADE + visión — Fase B** (train completo): **el delta se mantiene → CIDEr 78.68** (+4.08 sobre
   74.60 solo-visión). Tesis validada a escala. Mejor absoluto del proyecto (de pago en inferencia);
   mejor autónomo sigue siendo 74.60 (gratis).
-- [x] **VLM alternativo — GIT-large** (`baseline_git.py`, prototipo 20k): **CIDEr 69.26** (texto+visión,
-  r=16) vs BLIP 64.73 → **+4.5 sobre BLIP autónomo**, y **≈ BLIP+ADE (68.86, de pago)** SIN OCR externo.
-  Un backbone más fuerte captura lo de ADE gratis. Pendiente: escalar GIT a full (¿supera el 78.7 autónomamente?).
+- [x] **VLM alternativo — GIT-large** (`baseline_git.py`): en 20k GIT (69.26) **superaba** a BLIP (64.73),
+  pero **no escaló**. A full train con r=32 matched: GIT-coco **73.91** vs BLIP solo-visión **74.60** →
+  cuasi-empate, BLIP marginalmente adelante (−0.69). El confound de rango era parcial (r=16→32 dio +1.1)
+  pero no flipea el resultado. **GIT es más *data-efficient* (gana con poco dato) pero no supera a BLIP a
+  escala.** Podio sin cambios; BLIP-base fue elección razonable. Lección: un prototipo de bajo dato engaña
+  — validar a escala Y con hiperparámetros pareados.
+- [x] **VLM alternativo — Qwen2.5-VL-3B** (`baseline_qwen.py`, QLoRA 4-bit): viable en 8 GB (bitsandbytes
+  funciona en Blackwell) pero **~14× más lento** (~1 par/s, 20k/2ep = ~11h). Trampa: el modelo bilingüe
+  **fuga chino** en 26% de captions → hundía el CIDEr (56.4). Bloqueando tokens CJK en generación
+  (`eval_qwen.py --block-cjk`) sube a **63.57** (global) / 64.90 (texto) / 55.79 (sin texto): mejor que
+  BLIP en imágenes con texto, pero peor sin texto (captions verbosas). **No supera a BLIP (64.7) ni GIT
+  (69.3) a 20k**, y es mucho más caro. Forzar inglés en el prompt de **entrenamiento** (re-run de 11h)
+  NO lo arregla: empeora (49.36) y degenera en bucles de chino. Solo el bloqueo CJK en generación da
+  salida limpia. Lección: el prior bilingüe no es suprimible por prompt/LoRA a esta escala.
+- [x] **Conclusión exploración VLMs**: ningún alternativo (GIT, Qwen) destrona a BLIP para este task/8 GB.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
 
-## 9. Avenida ADE + visión (terreno preparado, sin ejecutar)
+## 9. Avenida ADE + visión (ejecutada — mejor resultado del proyecto)
 
 **Pregunta abierta:** la Fase 3 mostró que el prefijo ADE aporta +3.2 CIDEr, pero sobre el setup
 **débil** (20k, LoRA solo-texto, r=16). El escalado a 74.6 nunca recibió ADE. **¿Sigue aportando ADE
