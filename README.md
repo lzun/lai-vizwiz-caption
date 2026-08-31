@@ -444,7 +444,12 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
   (69.3) a 20k**, y es mucho más caro. Forzar inglés en el prompt de **entrenamiento** (re-run de 11h)
   NO lo arregla: empeora (49.36) y degenera en bucles de chino. Solo el bloqueo CJK en generación da
   salida limpia. Lección: el prior bilingüe no es suprimible por prompt/LoRA a esta escala.
-- [x] **Conclusión exploración VLMs**: ningún alternativo (GIT, Qwen) destrona a BLIP para este task/8 GB.
+- [x] **VLM alternativo — Florence-2-large**: intentado, **bloqueado**. Su código remoto (`trust_remote_code`)
+  es incompatible con transformers 5.15 (escrito para ~4.4x): tras 4 workarounds (parches config/processor,
+  einops+timm, eager attn) el checkpoint carga mal (`decoder.embed_tokens` MISSING) y exige imágenes cuadradas.
+  Requeriría un venv aislado con transformers antiguo. Exploración cerrada aquí.
+- [x] **Conclusión exploración VLMs (cerrada)**: ningún alternativo (GIT, Qwen, Florence-2) destrona a BLIP
+  para este task en 8 GB. **BLIP-base fue la elección correcta.**
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---
