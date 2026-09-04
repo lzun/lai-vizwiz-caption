@@ -1,7 +1,7 @@
 # VizWiz-Captions — Experimentos de Image Captioning
 
 Bitácora del proyecto: dataset, entorno, fine-tuning (BLIP + LoRA), OCR, escalado y
-alternativas de VLM. Última actualización: **2026-08-29**.
+alternativas de VLM. Última actualización: **2026-09-03**.
 
 > **TL;DR** — Image captioning sobre VizWiz-Captions, todo con LoRA en una laptop RTX 5060
 > (8 GB) **dentro de WSL2**. Partiendo de BLIP-base (CIDEr 43.5 sin adaptar):
@@ -48,6 +48,10 @@ wizviz-caption/
 ├── baseline_git.py               prototipo GIT-large (VLM alternativo a BLIP)
 ├── baseline_qwen.py              prototipo Qwen2.5-VL-3B (QLoRA 4-bit)
 ├── eval_qwen.py                  re-eval Qwen con inglés forzado / bloqueo CJK
+├── baseline_llava.py             prototipo LLaVA-1.5-7B (QLoRA 4-bit)
+├── eval_llava_extra.py           CIDEr + CLIP/BERT/SBERT de LLaVA sobre 2000 val
+├── compare_models.py             galería HTML comparando captions por modelo
+├── eval_metrics_extra.py         CLIPScore + BERTScore + SBERT por modelo
 ├── reporte_baseline.html         reporte visual de resultados
 └── README.md                     este archivo
 ```
@@ -448,8 +452,35 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
   es incompatible con transformers 5.15 (escrito para ~4.4x): tras 4 workarounds (parches config/processor,
   einops+timm, eager attn) el checkpoint carga mal (`decoder.embed_tokens` MISSING) y exige imágenes cuadradas.
   Requeriría un venv aislado con transformers antiguo. Exploración cerrada aquí.
-- [x] **Conclusión exploración VLMs (cerrada)**: ningún alternativo (GIT, Qwen, Florence-2) destrona a BLIP
-  para este task en 8 GB. **BLIP-base fue la elección correcta.**
+- [x] **VLM alternativo — LLaVA-1.5-7B** (`baseline_llava.py`, QLoRA 4-bit nf4): **cabe en 8 GB** (smoke
+  confirmó antes de comprometer el run largo) y completó 20k/2ep en **~21 h sin crashes**. English-only,
+  **cero fuga de idioma** (a diferencia de Qwen). **Lee el texto mejor que ningún otro modelo** (transcribe
+  "50 mg", "100 tablets", fechas de vencimiento). En crudo es **extremadamente verboso** (23.9 palabras) y
+  tras una primera oración impecable **degenera en repetición patológica** ("…medicine. 50 mg. 100 tablets.
+  100% natural…"), lo que hunde TODAS las métricas: CIDEr **14.21**, BERTScore **30.93**, SBERT **61.02**.
+  **Pero truncar al primer enunciado** (`first_sentence()` en `eval_llava_extra.py`, post-proceso trivial y
+  determinista) **lo transforma en el mejor modelo del proyecto en calidad**: 10.8 palabras/caption, CIDEr
+  **78.66** (empata el mejor absoluto ADE=78.68 **pero de forma autónoma**, sin API de pago), BERTScore
+  **55.70** (#1 de todos), SBERT **69.85** (#1 de todos). `eval_llava_extra.py` computa las 4 métricas para
+  ambas variantes (completa y truncada) sobre 2000 val; captions crudas cacheadas en `llava_caps.json`.
+  **Hallazgo clave (el más fuerte sobre evaluación):** el CIDEr 14.2 no medía mala comprensión sino un
+  *defecto de formato podable en una línea*; ninguna métrica lo detectó, solo mirar las captions y truncar.
+  Capacidad ≠ presentación, y las métricas agregadas los confunden. Caveats honestos: LLaVA es 7B (~30× BLIP)
+  y ~2 s/imagen; LLaVA usó greedy vs beam=3 de BLIP/GIT (decoding no 100% pareado).
+- [x] **Conclusión exploración VLMs (cerrada)**: en **eficiencia**, BLIP sigue siendo la elección correcta
+  (225M, casi instantáneo; ningún VLM lo destrona a coste comparable). En **calidad absoluta**, el podio
+  **sí cambia**: **LLaVA-1.5-7B truncado al primer enunciado iguala el mejor CIDEr (78.7, autónomo) y es #1
+  en BERTScore/SBERT** — al coste de 30× params y ~2 s/imagen. GIT y Qwen no superan a BLIP; Florence-2 quedó
+  bloqueado. Patrón: los VLM-LLM grandes traen un prior verboso/bilingüe difícil de alinear vía LoRA — pero
+  con LLaVA un simple post-proceso (truncar) separó un modelo excelente de sus métricas hundidas.
+- [x] **Métricas complementarias** (`eval_metrics_extra.py`): CLIPScore + BERTScore + SBERT sobre 2000 val.
+  Hallazgos: **CLIPScore inútil** aquí (plano ~0.73, CLIP no lee texto); **CIDEr y BERTScore se contradicen**
+  (ADE alto-CIDEr/bajo-BERTScore; Qwen bajo-CIDEr/alto-BERTScore) → cada métrica premia algo distinto
+  (texto exacto vs fluidez semántica); la utilidad de ADE es **específica** (contenido de texto), CIDEr era
+  correcta para ella; las semánticas **rehabilitan a Qwen** (subestimado por CIDEr). Con **LLaVA** ninguna
+  métrica bastó: su CIDEr 14.2 escondía un defecto de formato (verbosidad+repetición) que solo *mirar y
+  truncar* reveló → truncado es el #1 en las 3 métricas. Ver reporte §7.
+- [ ] Métricas de alucinación (CHAIR/POPE): necesitan anotaciones de objetos o un detector open-vocab.
 - [ ] Augmentations que imiten blur/encuadre para las imágenes más difíciles.
 
 ---

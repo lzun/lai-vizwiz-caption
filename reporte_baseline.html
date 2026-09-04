@@ -475,9 +475,66 @@
   es decisiva</strong>.</p>
 </section>
 
-<!-- 7 NEXT -->
+<!-- 7 MÉTRICAS -->
 <section>
-  <div class="sec-head"><span class="sec-num">07</span><h2>Límites y próximos pasos</h2></div>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Métricas complementarias: ¿qué es una "buena" caption?</h2></div>
+  <p class="measure lead">CIDEr/BLEU solo premian coincidir con las referencias humanas —cortas y a veces
+  imprecisas en VizWiz—. Se añadieron tres métricas: <strong>CLIPScore</strong> (alineación imagen↔caption,
+  sin referencia), y <strong>BERTScore</strong> y <strong>SBERT</strong> (similitud semántica con las refs).
+  Evaluadas sobre las 2 000 imágenes de val.</p>
+
+  <div class="tablecard"><div class="scroll">
+    <table>
+      <thead><tr><th>Modelo</th><th>CIDEr</th><th>CLIPScore</th><th>BERTScore</th><th>SBERT</th></tr></thead>
+      <tbody>
+        <tr><td>BLIP + visión</td><td>74.66</td><td>0.73</td><td>49.82</td><td>66.79</td></tr>
+        <tr><td>BLIP + ADE</td><td class="cap">78.68</td><td>0.74</td><td style="color:var(--muted)">47.00</td><td>66.90</td></tr>
+        <tr><td>GIT-large</td><td>74.07</td><td>0.73</td><td class="cap">51.76</td><td class="cap">69.34</td></tr>
+        <tr><td>Qwen2.5-VL</td><td style="color:var(--muted)">62.30</td><td>0.73</td><td>51.60</td><td>65.97</td></tr>
+        <tr><td>LLaVA-1.5-7B <span style="color:var(--muted)">(completa)</span></td><td style="color:var(--muted)">14.21</td><td>0.74</td><td style="color:var(--muted)">30.93</td><td style="color:var(--muted)">61.02</td></tr>
+        <tr><td><strong>LLaVA-1.5-7B (1er enunciado)</strong></td><td class="cap">78.66</td><td>0.74</td><td class="cap">55.70</td><td class="cap">69.85</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+  <p class="measure" style="font-size:14px;color:var(--muted);margin-top:10px">Longitud media de la caption:
+  ~11 palabras (BLIP/GIT) · 15 (Qwen) · <strong>23.9 (LLaVA completa) → 10.8 (LLaVA 1er enunciado)</strong> —
+  frente a ~12 de las referencias humanas.</p>
+
+  <div class="measure">
+    <p style="margin-top:24px"><strong>Las métricas se contradicen — y ahí está la lección.</strong> Mira la
+    diagonal: <strong>ADE</strong> es el <em>más alto</em> en CIDEr (78.7) pero el <em>más bajo</em> en
+    BERTScore (47.0); <strong>Qwen</strong> es el <em>más bajo</em> en CIDEr (62.3) pero casi el <em>más
+    alto</em> en BERTScore (51.6). No es ruido: cada métrica premia una noción distinta de calidad.</p>
+    <p><strong>CIDEr</strong> premia acertar el <em>texto/marca exacto</em> de las refs (n-gramas) — el
+    fuerte de ADE. <strong>BERTScore/SBERT</strong> premian oraciones <em>fluidas y semánticamente
+    completas</em> — el fuerte de GIT y Qwen. <strong>CLIPScore no discrimina</strong> (plano ~0.73):
+    CLIP lee muy mal el texto en imágenes, así que no aplica a un dominio text-heavy como VizWiz.</p>
+    <p style="border-left:3px solid var(--accent);padding-left:16px;color:var(--ink)">
+    <strong>Conclusión.</strong> Ninguna métrica sola basta. La utilidad de ADE es <strong>específica</strong>
+    (contenido de texto preciso, justo lo que importa para leerle una etiqueta a una persona ciega) — y
+    para eso CIDEr era la métrica correcta. Las métricas semánticas, en cambio, <strong>rehabilitan a los
+    captioners tipo LLM</strong> (Qwen): último en CIDEr, casi primero en BERTScore. Elegir la métrica es
+    elegir qué noción de "útil" se optimiza.</p>
+    <p style="margin-top:20px"><strong>El caso LLaVA-1.5-7B: un artefacto de formato ocultaba al mejor modelo.</strong>
+    En crudo genera captions de <strong>23.9 palabras</strong> que, tras una primera oración impecable,
+    <em>degeneran en repetición patológica</em> (<span style="color:var(--muted)">"…a bottle of night time
+    medicine. <span style="font-family:var(--mono,monospace)">50 mg. 100 tablets. 100% natural…</span>"</span>).
+    Eso hunde <em>todas</em> las métricas (CIDEr 14.2, BERTScore 30.9). Pero <strong>truncar al primer
+    enunciado</strong> —post-proceso trivial y determinista— lo transforma: <strong>CIDEr 78.7</strong>
+    (empata el mejor absoluto, ADE, pero <em>de forma autónoma</em> sin API de pago) y <strong>#1 en BERTScore
+    (55.7) y SBERT (69.9)</strong>.</p>
+    <p style="border-left:3px solid var(--good);padding-left:16px;color:var(--ink)">
+    <strong>La lección más fuerte del proyecto sobre evaluación:</strong> el CIDEr 14.2 no medía "mala
+    comprensión" —LLaVA es el que mejor lee el texto— sino un <em>defecto de formato podable en una línea</em>.
+    Ninguna métrica lo detectó; solo mirar las captions y truncar reveló que el modelo subyacente era el mejor.
+    <strong>Capacidad y presentación son ejes distintos</strong>, y las métricas agregadas los confunden. El
+    coste: LLaVA es 7B (~30× BLIP) y ~2 s/imagen — imbatible en calidad, pero BLIP gana en eficiencia.</p>
+  </div>
+</section>
+
+<!-- 8 NEXT -->
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>Límites y próximos pasos</h2></div>
   <div class="measure">
     <ul class="clean">
       <li><b>Escalar el fine-tuning.</b> Más épocas, LoRA de mayor rango o afinar también el encoder de visión — la dirección con más recorrido tras cerrar el hilo de OCR.</li>
@@ -491,15 +548,22 @@
     BLIP solo-visión (74.6). <strong>Qwen2.5-VL-3B</strong> (QLoRA 4-bit en 8 GB, ~14× más lento): su
     prior bilingüe <em>fuga chino</em> en 26 % de captions (hundía el CIDEr); forzando salida en inglés
     llega a <strong>63.6</strong> (20k) — mejor que BLIP en imágenes con texto, peor sin texto, sin
-    superar a GIT/BLIP. <strong>Ningún VLM alternativo destrona a BLIP</strong> para este task en 8 GB.
+    superar a GIT/BLIP. <strong>LLaVA-1.5-7B</strong> (QLoRA 4-bit en 8 GB, ~21 h para 20k): cabe y no fuga
+    idioma, y <em>lee el texto mejor que ningún otro</em>. En crudo es verboso (23.9 palabras) y degenera en
+    repetición, hundiendo las métricas (CIDEr 14.2) — pero <strong>truncado al primer enunciado alcanza CIDEr
+    78.7 (empata al mejor absoluto, autónomamente) y es #1 en BERTScore/SBERT</strong>. Es el único alternativo
+    que <em>iguala o supera</em> a BLIP en calidad — al coste de 7B params (~30×) y ~2 s/imagen.
+    <strong>En calidad pura, LLaVA (truncado) es el techo; en eficiencia, BLIP sigue ganando.</strong>
     Lecciones: un prototipo de bajo dato puede engañar (validar a escala y con hiperparámetros pareados);
-    los VLM bilingües fugan idioma y hay que restringirlo. El podio no cambia.</p>
+    los VLM bilingües fugan idioma; los VLM-LLM grandes traen un prior verboso —a veces un simple post-proceso
+    (truncar) separa un modelo excelente de sus métricas hundidas—; y capacidad ≠ presentación. El podio de
+    <em>eficiencia</em> no cambia; el de <em>calidad absoluta</em> ahora lo encabeza LLaVA truncado.</p>
   </div>
 </section>
 
 <!-- 7 REPRO -->
 <section style="border-bottom:none">
-  <div class="sec-head"><span class="sec-num">08</span><h2>Reproducibilidad</h2></div>
+  <div class="sec-head"><span class="sec-num">09</span><h2>Reproducibilidad</h2></div>
   <p class="measure">Todo corre desde Windows invocando el venv de WSL. Comandos principales:</p>
 <pre><span class="cm"># Mejor modelo: LoRA en texto + encoder de visión (r=32), reanudable</span>
 python baseline_blip_lora.py --epochs 4 --batch-size 12 --lora-r 32 --lora-alpha 64 \
