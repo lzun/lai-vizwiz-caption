@@ -33,6 +33,14 @@ def free():
     gc.collect(); torch.cuda.empty_cache()
 
 
+def first_sentence(text: str) -> str:
+    """Primer enunciado: hasta el primer '.', '!' o '?' seguido de espacio/fin."""
+    import re
+    t = text.strip()
+    m = re.search(r"[.!?](\s|$)", t)
+    return t[: m.end()].strip() if m else t
+
+
 def load_imgs(paths):
     return [Image.open(p).convert("RGB") for p in paths]
 
@@ -118,6 +126,30 @@ def gen_qwen(paths, adapter, device):
     return out
 
 
+# ---- LLaVA-1.5-7B (4-bit) — devuelve captions completas (crudas) ----
+def gen_llava(paths, adapter, device):
+    import baseline_llava as bl
+    from transformers import LlavaForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
+    from peft import PeftModel
+    proc = AutoProcessor.from_pretrained(bl.MODEL, use_fast=True)
+    bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                             bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True)
+    model = LlavaForConditionalGeneration.from_pretrained(
+        bl.MODEL, quantization_config=bnb, dtype=torch.float16, device_map={"": 0})
+    model = PeftModel.from_pretrained(model, str(adapter)).eval()
+    tok = proc.tokenizer
+    out = []
+    for p in paths:
+        img = Image.open(p).convert("RGB")
+        text = bl.build_text(proc, None)
+        enc = proc(images=img, text=text, return_tensors="pt").to(device)
+        with torch.no_grad():
+            g = model.generate(**enc, max_new_tokens=40, do_sample=False, num_beams=1)
+        out.append(tok.decode(g[0][enc["input_ids"].shape[1]:], skip_special_tokens=True).strip())
+    del model, proc; free()
+    return out
+
+
 def data_uri(path, max_side=420):
     im = Image.open(path).convert("RGB"); im.thumbnail((max_side, max_side))
     buf = io.BytesIO(); im.save(buf, format="JPEG", quality=85)
@@ -139,12 +171,17 @@ def write_html(out_path, cards, model_names):
     td{padding:9px 10px;border-top:1px solid #26303c;font-size:14px;vertical-align:top}
     td.m{color:#95a1b3;white-space:nowrap;width:1%;font-weight:600;font-size:12.5px}
     tr.human td{color:#a78bfa}tr.best td.m{color:#e8a34a}tr.auto td.m{color:#7ee787}
+    tr.verbose td.m{color:#6b7788}tr.verbose td.cap{color:#95a1b3}
     .cap{color:#e8ecf2}
     @media(max-width:720px){.card{grid-template-columns:1fr}}
     """
     P = [f"<!doctype html><meta charset='utf-8'><title>Comparación de modelos — VizWiz</title><style>{css}</style>",
          "<h1>Comparación de captions por modelo — VizWiz-Captions</h1>",
-         f"<p class='sub'>{len(cards)} imágenes de val · cada modelo genera su caption · morado = referencias humanas</p>"]
+         f"<p class='sub'>{len(cards)} imágenes de val · cada modelo genera su caption · "
+         f"<span style='color:#a78bfa'>morado</span> = humano · "
+         f"<span style='color:#e8a34a'>ámbar</span> = mejor absoluto (ADE, de pago) · "
+         f"<span style='color:#7ee787'>verde</span> = mejor autónomo · "
+         f"<span style='color:#95a1b3'>gris</span> = LLaVA crudo (verboso)</p>"]
     for c in cards:
         P.append("<div class='card'>")
         tag = "<span class='tag txt'>con texto</span>" if c["text"] else "<span class='tag notxt'>sin texto</span>"
@@ -153,7 +190,14 @@ def write_html(out_path, cards, model_names):
         for r in (c["refs"] or [])[:2]:
             P.append(f"<tr class='human'><td class='m'>humano</td><td class='cap'>{html.escape(r)}</td></tr>")
         for mn in model_names:
-            cls = "best" if "ADE" in mn else ("auto" if "74.6" in mn else "")
+            if "ADE" in mn:
+                cls = "best"
+            elif "74.6" in mn or "1er enunciado" in mn:
+                cls = "auto"
+            elif "completo" in mn:
+                cls = "verbose"
+            else:
+                cls = ""
             P.append(f"<tr class='{cls}'><td class='m'>{html.escape(mn)}</td><td class='cap'>{html.escape(c['caps'].get(mn,''))}</td></tr>")
         P.append("</table></div>")
     Path(out_path).write_text("\n".join(P), encoding="utf-8")
@@ -186,12 +230,15 @@ def main():
     ade = json.loads((Path(root) / "ocr_cache_landingai.json").read_text(encoding="utf-8"))
 
     caps_by_model = {}
+    LLAVA_FULL = "LLaVA-7B (completo)"
+    LLAVA_TRUNC = "LLaVA-7B · 1er enunciado (78.7)"
     plan = [
         ("BLIP base", lambda: gen_blip(paths, files, None, None, device)),
         ("BLIP + visión (74.6)", lambda: gen_blip(paths, files, RUNS / "blip_scaled4", None, device)),
         ("BLIP + visión + ADE (78.7)", lambda: gen_blip(paths, files, RUNS / "blip_ade_vision_full", ade, device)),
         ("GIT-large (73.9)", lambda: gen_git(paths, RUNS / "git_coco_full_r32", device)),
         ("Qwen2.5-VL", lambda: gen_qwen(paths, RUNS / "qwen25vl_20k", device)),
+        (LLAVA_FULL, lambda: gen_llava(paths, RUNS / "llava15_7b_20k", device)),
     ]
     for name, fn in plan:
         print(f">> generando: {name}")
@@ -202,6 +249,10 @@ def main():
             caps_by_model[name] = ["[error]"] * len(paths)
 
     model_names = [n for n, _ in plan]
+    # Variante truncada de LLaVA (misma generación, sin re-inferir) — muestra el hallazgo
+    if LLAVA_FULL in caps_by_model:
+        caps_by_model[LLAVA_TRUNC] = [first_sentence(c) for c in caps_by_model[LLAVA_FULL]]
+        model_names.insert(model_names.index(LLAVA_FULL) + 1, LLAVA_TRUNC)
     cards = []
     for j, (pth, fl, rf, tx) in enumerate(zip(paths, files, refs, is_text)):
         cards.append({"uri": data_uri(pth), "file": fl, "refs": rf, "text": tx,
