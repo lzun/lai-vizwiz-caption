@@ -61,3 +61,6 @@ test/
 annotations/
 VizWiz_captions_project_all_metadata.csv
 *.pdf
+
+# Adaptadores copiados para el servicio web (space/); se suben al Space con `hf upload`
+space/adapters/

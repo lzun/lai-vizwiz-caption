@@ -63,7 +63,9 @@ def gen_blip(paths, files, adapter, ade_cache, device):
         with torch.no_grad():
             if ocr.strip():
                 ocr_ids = tok(ocr, add_special_tokens=False, truncation=True, max_length=MAX_OCR).input_ids
-                prompt = torch.tensor([[tok.cls_token_id] + ocr_ids], device=device)
+                # +[sep]: BLIP.generate hace input_ids[:, :-1]; el extra se descarta y el
+                # decoder condiciona en el prefijo COMPLETO [cls]+OCR (ver baseline_blip_ocr).
+                prompt = torch.tensor([[tok.cls_token_id] + ocr_ids + [tok.sep_token_id]], device=device)
                 g = model.generate(pixel_values=pix, input_ids=prompt, num_beams=3,
                                    max_new_tokens=30, min_new_tokens=5)
                 cap = tok.decode(g[0][1 + len(ocr_ids):], skip_special_tokens=True).strip()

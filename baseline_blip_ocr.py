@@ -118,11 +118,15 @@ def evaluate(model, processor, val, ocr_cache, use_ocr, device, args):
         if ocr.strip():
             ocr_ids = tok(ocr, add_special_tokens=False, truncation=True,
                           max_length=MAX_OCR).input_ids
-            prompt = torch.tensor([[cls] + ocr_ids], device=device)
+            # BLIP.generate descarta el último token de input_ids (hace input_ids[:, :-1]).
+            # Añadimos un token extra (sep) para que el decoder condicione en el prefijo
+            # COMPLETO [cls]+OCR (fiel al entrenamiento); el extra se descarta y la salida
+            # arranca justo tras el prefijo, así que el recorte [1+len:] queda alineado.
+            prompt = torch.tensor([[cls] + ocr_ids + [tok.sep_token_id]], device=device)
             gen = model.generate(pixel_values=pix, input_ids=prompt,
                                  num_beams=args.num_beams, max_new_tokens=args.max_new_tokens,
                                  min_new_tokens=args.min_new_tokens)
-            cont = gen[0][1 + len(ocr_ids):]          # quita [DEC] + prefijo OCR
+            cont = gen[0][1 + len(ocr_ids):]          # prefijo real en salida = [bos]+OCR (1+len)
             cap = tok.decode(cont, skip_special_tokens=True).strip()
         else:
             gen = model.generate(pixel_values=pix, num_beams=args.num_beams,

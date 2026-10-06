@@ -1,7 +1,7 @@
 # VizWiz-Captions — Experimentos de Image Captioning
 
 Bitácora del proyecto: dataset, entorno, fine-tuning (BLIP + LoRA), OCR, escalado y
-alternativas de VLM. Última actualización: **2026-09-03**.
+alternativas de VLM. Última actualización: **2026-10-06**.
 
 > **TL;DR** — Image captioning sobre VizWiz-Captions, todo con LoRA en una laptop RTX 5060
 > (8 GB) **dentro de WSL2**. Partiendo de BLIP-base (CIDEr 43.5 sin adaptar):
@@ -53,6 +53,7 @@ wizviz-caption/
 ├── compare_models.py             galería HTML comparando captions por modelo
 ├── eval_metrics_extra.py         CLIPScore + BERTScore + SBERT por modelo
 ├── reporte_baseline.html         reporte visual de resultados
+├── space/                        servicio web Gradio (prototipo para HF Spaces, §10)
 └── README.md                     este archivo
 ```
 
@@ -557,7 +558,32 @@ delta (~+4.5 en texto) se mantiene, full+visión+ADE ≈ **78-79 CIDEr**. Matiz:
 
 ---
 
-## 10. Referencias
+## 10. Servicio web (prototipo, 2026-10-06)
+
+`space/` empaqueta el **mejor modelo autónomo** (`blip_scaled4`, CIDEr 74.6) como servicio web con
+Gradio: imagen → descripción en inglés, con UI y API HTTP (`/describe`). Listo para Hugging Face
+Spaces (`space/README.md` lleva el front-matter del Space). Ejecución, API y despliegue en
+[`space/README.md`](space/README.md).
+
+- Local: `wsl -e bash /mnt/c/Users/green/Documents/GitHub/wizviz-caption/space/run_local.sh` → <http://localhost:7860>.
+- Latencia medida: ~0.5 s/imagen en la RTX 5060, ~1.5–2 s en CPU.
+- En HF, las cuentas gratuitas ya no pueden alojar Gradio en `cpu-basic` (402, requiere PRO);
+  la opción gratuita es **ZeroGPU**, y `app.py` ya es compatible (`@spaces.GPU`, torch 2.11.0).
+- Modo opcional **BLIP + ADE** (CIDEr 78.7): solo se habilita si hay `VISION_AGENT_API_KEY`;
+  ~7–10 s y ~1 crédito por imagen. En un Space público no conviene poner la clave.
+- Los adaptadores (`space/adapters/`) no se versionan en git; se copian desde `~/wizviz/runs/`.
+
+**Bug encontrado al construirlo:** `BlipForConditionalGeneration.generate` descarta el **último
+token** de `input_ids` (asume que termina en `[SEP]`). En `baseline_blip_ocr.py` (`evaluate`) el
+prompt `[CLS] + prefijo` se pasa sin `[SEP]`, así que **se perdía el último token del prefijo y el
+recorte `1 + len(ocr_ids)` se comía la primera palabra generada** (típicamente "a"). El servicio lo
+corrige añadiendo un `[SEP]` de relleno. Las cifras con prefijo OCR/ADE (Fases 2–3, §9, incl. el
+78.7) se midieron con el bug; conviene re-evaluarlas (sin re-entrenar ni gastar créditos: el caché
+ADE ya existe).
+
+---
+
+## 11. Referencias
 
 - D. Gurari, Y. Zhao, M. Zhang, N. Bhattacharya. *Captioning Images Taken by People Who Are Blind.*
   ECCV 2020. (`2002.08565v2.pdf`) · <https://vizwiz.org>

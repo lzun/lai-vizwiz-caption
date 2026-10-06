@@ -1,0 +1,7 @@
+# Hugging Face Spaces (SDK Gradio) instala gradio por su cuenta según sdk_version del README.
+spaces                # ZeroGPU (@spaces.GPU); en local no hace falta
+torch==2.11.0         # versión soportada por ZeroGPU y la misma del venv WSL
+transformers>=5.15
+peft>=0.20
+pillow
+landingai-ade>=1.17   # solo para el modo ADE opcional
