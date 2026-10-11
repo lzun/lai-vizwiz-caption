@@ -196,18 +196,18 @@
 <!-- HEADLINE -->
 <section>
   <div class="headline">
-    <div class="bignum">78.7<small>CIDEr en val · con ADE</small></div>
+    <div class="bignum">94.8<small>CIDEr en val completo (7542) · con ADE</small></div>
     <div class="say">
-      Dos "mejores" según el criterio. <b>Absoluto: CIDEr 78.7</b> combinando fine-tuning
+      Dos "mejores" según el criterio. <b>Absoluto: CIDEr 94.8</b> combinando fine-tuning
       del <b>encoder de visión</b> + las descripciones de <b>Landing&nbsp;AI ADE</b> como
-      prefijo — requiere pagar ADE por imagen en inferencia. <b>Autónomo: CIDEr 74.6</b>
-      (solo-visión, gratis y local). Ambos parten de <b>43.5</b> del modelo base, con un
+      prefijo — requiere pagar ADE por imagen en inferencia. <b>Autónomo: CIDEr 86.9</b>
+      (solo-visión, gratis y local). Ambos parten de <b>47.3</b> del modelo base, con un
       <b>1.56%</b> de los parámetros, en una laptop de 8&nbsp;GB.
     </div>
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="n">+35.2</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
+    <div class="stat"><div class="n">+47.5</div><div class="k">Ganancia CIDEr sobre el modelo base</div></div>
     <div class="stat"><div class="n">1.56<span class="u">%</span></div><div class="k">Parámetros entrenables (LoRA)</div></div>
     <div class="stat"><div class="n">8<span class="u">GB</span></div><div class="k">VRAM de la laptop (RTX 5060)</div></div>
     <div class="stat"><div class="n">100.6<span class="u">k</span></div><div class="k">Pares imagen–caption (train limpio)</div></div>
@@ -269,17 +269,18 @@
 <!-- 4 RESULTS -->
 <section>
   <div class="sec-head"><span class="sec-num">04</span><h2>Resultados</h2></div>
-  <p class="measure lead">Evaluación sobre 2 000 imágenes de val con búsqueda por haces (beam = 3).
-  De BLIP sin adaptar, a LoRA sobre el texto, hasta aplicar LoRA también al <strong>encoder de visión</strong>.</p>
+  <p class="measure lead">Evaluación sobre el <strong>conjunto de validación completo (7 542 imágenes)</strong>
+  con búsqueda por haces (beam = 3). De BLIP sin adaptar, a LoRA sobre el texto, hasta aplicar LoRA también
+  al <strong>encoder de visión</strong>.</p>
 
   <div class="tablecard"><div class="scroll">
     <table>
       <thead><tr><th>Modelo</th><th>CIDEr</th><th>BLEU-4</th><th>BLEU-1</th><th>ROUGE-L</th></tr></thead>
       <tbody>
-        <tr><td>BLIP base <span class="rowtag">sin fine-tuning</span></td><td>43.49</td><td>20.87</td><td>63.27</td><td>43.09</td></tr>
-        <tr><td>LoRA texto · 20k pares · 2 épocas</td><td>54.40</td><td>22.59</td><td>65.57</td><td>45.99</td></tr>
-        <tr><td>LoRA texto · train completo · 3 épocas</td><td>60.28</td><td>24.26</td><td>67.18</td><td>46.83</td></tr>
-        <tr class="best"><td>LoRA texto + visión <span class="rowtag">r=32 · full · 4 épocas</span></td><td class="cap">74.60</td><td class="cap">27.51</td><td>70.38</td><td>49.02</td></tr>
+        <tr><td>BLIP base <span class="rowtag">sin fine-tuning</span></td><td>47.27</td><td>19.54</td><td>61.29</td><td>42.75</td></tr>
+        <tr><td>LoRA texto · 20k pares · 2 épocas</td><td>61.91</td><td>22.08</td><td>64.47</td><td>45.93</td></tr>
+        <tr><td>LoRA texto · train completo · 3 épocas</td><td>69.10</td><td>24.20</td><td>66.40</td><td>47.28</td></tr>
+        <tr class="best"><td>LoRA texto + visión <span class="rowtag">r=32 · full · 4 épocas</span></td><td class="cap">86.93</td><td class="cap">27.93</td><td>70.15</td><td>49.83</td></tr>
       </tbody>
     </table>
   </div></div>
@@ -289,44 +290,44 @@
     <p class="sub">Cada eje es ortogonal y aporta: texto, luego <b>visión</b> (el mayor salto), luego <b>ADE</b>.</p>
     <div class="bar-row">
       <div class="bar-lab"><b>Base</b><br>sin FT</div>
-      <div class="track"><div class="fill base" style="width:51.2%"></div></div>
-      <div class="bar-val">43.5</div>
+      <div class="track"><div class="fill base" style="width:47.3%"></div></div>
+      <div class="bar-val">47.3</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LoRA 20k</b><br>texto</div>
-      <div class="track"><div class="fill base" style="width:64.0%"></div></div>
-      <div class="bar-val">54.4</div>
+      <div class="track"><div class="fill base" style="width:61.9%"></div></div>
+      <div class="bar-val">61.9</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LoRA full</b><br>texto</div>
-      <div class="track"><div class="fill base" style="width:70.9%"></div></div>
-      <div class="bar-val">60.3</div>
+      <div class="track"><div class="fill base" style="width:69.1%"></div></div>
+      <div class="bar-val">69.1</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>+ visión</b><br>autónomo</div>
-      <div class="track"><div class="fill base" style="width:87.8%"></div></div>
-      <div class="bar-val">74.6</div>
+      <div class="track"><div class="fill base" style="width:86.9%"></div></div>
+      <div class="bar-val">86.9</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>+ ADE</b><br>con pago</div>
-      <div class="track"><div class="fill" style="width:92.6%"></div></div>
-      <div class="bar-val cap">78.7</div>
+      <div class="track"><div class="fill" style="width:94.8%"></div></div>
+      <div class="bar-val cap">94.8</div>
     </div>
     <div class="bar-row" style="margin-top:14px">
       <div class="bar-lab papermark">Paper (test)</div>
       <div class="track" style="background:transparent">
-        <div style="position:absolute;left:69.4%;width:2.4%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
+        <div style="position:absolute;left:59%;width:2%;top:0;bottom:0;background:var(--data-soft);border-left:1px dashed var(--data);border-right:1px dashed var(--data)"></div>
       </div>
       <div class="bar-val papermark" style="color:var(--data)">59–61</div>
     </div>
-    <p class="sub" style="margin:16px 0 0">Escala 0–85 · CIDEr ×100 · la banda del paper es sobre test, no directamente comparable</p>
+    <p class="sub" style="margin:16px 0 0">Escala 0–100 · CIDEr ×100 · val completo (7 542) · la banda del paper es sobre test, no directamente comparable</p>
   </div>
 
-  <p class="muted" style="font-size:14px;margin-top:16px">El modelo <strong>autónomo</strong> (74.6) aplica
+  <p class="muted" style="font-size:14px;margin-top:16px">El modelo <strong>autónomo</strong> (86.9) aplica
   LoRA al texto y al <strong>encoder de visión</strong> (r=32, 3.54M params, 4 épocas, VRAM 7.0/8.1&nbsp;GB
-  sin OOM): adaptar el ViT aporta <strong>+12.4 CIDEr</strong> sobre solo-texto — la palanca es la visión,
-  no las épocas (2→4 solo +1.9) ni el rango (r=64 no ayuda). Sumar el prefijo <strong>ADE</strong> encima
-  lleva al <strong>78.7</strong> absoluto (ver §6), a cambio de pagar ADE en inferencia.</p>
+  sin OOM): adaptar el ViT aporta <strong>+15.5 CIDEr</strong> sobre solo-texto — la palanca es la visión,
+  no las épocas (2→4 solo +2.3) ni el rango (r=64 no ayuda). Sumar el prefijo <strong>ADE</strong> encima
+  lleva al <strong>94.8</strong> absoluto (ver §6), a cambio de pagar ADE en inferencia.</p>
 </section>
 
 <!-- 5 QUALITATIVE -->
@@ -365,10 +366,10 @@
     <table>
       <thead><tr><th>Enfoque</th><th>CIDEr global</th><th>Con texto</th><th>Sin texto</th></tr></thead>
       <tbody>
-        <tr><td>Control <span class="rowtag">sin OCR</span></td><td>54.49</td><td>51.68</td><td>62.18</td></tr>
-        <tr><td>EasyOCR <span class="rowtag">gratis, ruidoso</span></td><td>51.14</td><td>47.37</td><td>62.43</td></tr>
-        <tr><td>Landing AI · solo texto <span class="rowtag">transcripción literal</span></td><td>52.38</td><td>49.22</td><td>62.23</td></tr>
-        <tr class="best"><td>Landing AI · ADE completo <span class="rowtag">descripción de escena</span></td><td class="cap">56.99</td><td class="cap">54.84</td><td>63.26</td></tr>
+        <tr><td>Control <span class="rowtag">sin OCR</span></td><td>61.87</td><td>61.63</td><td>59.60</td></tr>
+        <tr><td>EasyOCR <span class="rowtag">gratis, ruidoso</span></td><td>60.67</td><td>60.02</td><td>59.26</td></tr>
+        <tr><td>Landing AI · solo texto <span class="rowtag">transcripción literal</span></td><td>61.73</td><td>61.70</td><td>59.46</td></tr>
+        <tr class="best"><td>Landing AI · ADE completo <span class="rowtag">descripción de escena</span></td><td class="cap">69.99</td><td class="cap">73.96</td><td>59.56</td></tr>
       </tbody>
     </table>
   </div></div>
@@ -378,28 +379,28 @@
     <p class="sub">Solo el prefijo con la descripción de Landing AI supera la línea del control.</p>
     <div class="bar-row">
       <div class="bar-lab"><b>Control</b><br>sin OCR</div>
-      <div class="track"><div class="fill base" style="width:86.1%"></div></div>
-      <div class="bar-val">51.7</div>
+      <div class="track"><div class="fill base" style="width:77.0%"></div></div>
+      <div class="bar-val">61.6</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>EasyOCR</b><br>ruidoso</div>
-      <div class="track"><div class="fill base" style="width:79.0%"></div></div>
-      <div class="bar-val" style="color:var(--muted)">47.4</div>
+      <div class="track"><div class="fill base" style="width:75.0%"></div></div>
+      <div class="bar-val" style="color:var(--muted)">60.0</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LA solo texto</b><br>literal</div>
-      <div class="track"><div class="fill base" style="width:82.0%"></div></div>
-      <div class="bar-val" style="color:var(--muted)">49.2</div>
+      <div class="track"><div class="fill base" style="width:77.1%"></div></div>
+      <div class="bar-val" style="color:var(--muted)">61.7</div>
     </div>
     <div class="bar-row">
       <div class="bar-lab"><b>LA ADE</b><br>descripción</div>
       <div class="track">
-        <div class="fill" style="width:91.4%"></div>
-        <div style="position:absolute;left:86.1%;top:-4px;bottom:-4px;border-left:2px dashed var(--muted)"></div>
+        <div class="fill" style="width:92.5%"></div>
+        <div style="position:absolute;left:77.0%;top:-4px;bottom:-4px;border-left:2px dashed var(--muted)"></div>
       </div>
-      <div class="bar-val cap">54.8</div>
+      <div class="bar-val cap">74.0</div>
     </div>
-    <p class="sub" style="margin:16px 0 0">Escala 0–60 · CIDEr ×100 · línea discontinua = control</p>
+    <p class="sub" style="margin:16px 0 0">Escala 0–80 · CIDEr ×100 · val completo · línea discontinua = control</p>
   </div>
 
   <div class="measure">
@@ -407,7 +408,7 @@
     <em>no es leer el texto</em>. La transcripción literal —barata (EasyOCR) o de calidad (Landing AI
     solo-texto)— queda <strong>por debajo</strong> del control. Las captions humanas describen la
     escena (<em>"a person holding a bottle"</em>), no transcriben etiquetas.</p>
-    <p>Lo que sí mejora (+3.2 CIDEr en imágenes con texto) es inyectar la <strong>descripción de
+    <p>Lo que sí mejora (+12.3 CIDEr en imágenes con texto) es inyectar la <strong>descripción de
     escena</strong> que genera Landing&nbsp;AI ADE — una señal rica de un modelo visión-lenguaje
     fuerte. En la práctica es <strong>destilación de un VLM</strong>, no OCR. Y su coste se traslada
     a la inferencia: requiere una llamada de pago por imagen.</p>
@@ -422,23 +423,23 @@
     <table>
       <thead><tr><th>Enfoque</th><th>CIDEr global</th><th>Con texto</th><th>En inferencia</th></tr></thead>
       <tbody>
-        <tr><td>Control</td><td>55.14</td><td>52.28</td><td>gratis</td></tr>
-        <tr><td>Landing AI · prefijo <span class="rowtag">Fase 3</span></td><td class="cap">56.99</td><td class="cap">54.84</td><td>paga ADE / img</td></tr>
-        <tr><td>Destilar prosa de ADE <span class="rowtag">Fase 4</span></td><td>33.54</td><td>29.53</td><td>gratis</td></tr>
-        <tr><td>Destilar profesor estilo-VizWiz <span class="rowtag">Fase 4b</span></td><td>54.19</td><td>50.89</td><td>gratis</td></tr>
+        <tr><td>Control</td><td>61.52</td><td>61.27</td><td>gratis</td></tr>
+        <tr><td>Landing AI · prefijo <span class="rowtag">Fase 3</span></td><td class="cap">69.99</td><td class="cap">73.96</td><td>paga ADE / img</td></tr>
+        <tr><td>Destilar prosa de ADE <span class="rowtag">Fase 4</span></td><td>35.96</td><td>31.33</td><td>gratis</td></tr>
+        <tr><td>Destilar profesor estilo-VizWiz <span class="rowtag">Fase 4b</span></td><td>60.92</td><td>60.54</td><td>gratis</td></tr>
       </tbody>
     </table>
   </div></div>
 
   <div class="measure">
-    <p style="margin-top:24px"><strong>Fase 4 se hundió</strong> (CIDEr 55→34): al entrenar contra la
+    <p style="margin-top:24px"><strong>Fase 4 se hundió</strong> (CIDEr 62→36): al entrenar contra la
     prosa verbosa de ADE (<em>"a close-up, slightly blurry photograph of…"</em>), BLIP adoptó ese estilo
     en todas partes —incluso en imágenes sin texto— y dejó de coincidir con las captions humanas cortas.</p>
     <p><strong>Fase 4b lo corrigió</strong> usando como profesor el propio modelo de la Fase 3, que ya
-    produce captions estilo-VizWiz: el colapso desaparece (34→54). <strong>Pero solo llega a la par del
+    produce captions estilo-VizWiz: el colapso desaparece (36→61). <strong>Pero solo llega a la par del
     control</strong>, no lo supera. Se <strong>neutraliza el daño, sin capturar la ganancia</strong>.</p>
     <p style="border-left:3px solid var(--accent);padding-left:16px;color:var(--ink)">
-    <strong>Conclusión del hilo de OCR.</strong> La ventaja de la descripción de ADE (+3.2 CIDEr) solo
+    <strong>Conclusión del hilo de OCR.</strong> La ventaja de la descripción de ADE (+12.3 CIDEr en texto) solo
     se materializa con su <strong>inferencia fresca por imagen</strong> (Fase 3, de pago). Ni el OCR
     barato, ni destilar la prosa, ni destilar de un profesor estilo-matched la meten “gratis” en un
     modelo autónomo: el valor del VLM fuerte reside en su inferencia, no en unas pocas pseudo-etiquetas.</p>
@@ -453,26 +454,28 @@
     <table>
       <thead><tr><th>Modelo (train completo)</th><th>CIDEr global</th><th>Con texto</th><th>En inferencia</th></tr></thead>
       <tbody>
-        <tr><td>EasyOCR + visión <span class="rowtag">OCR ruidoso</span></td><td>70.33</td><td>68.35</td><td>gratis</td></tr>
-        <tr><td>Solo-visión <span class="rowtag">mejor autónomo</span></td><td>74.60</td><td>—</td><td>gratis</td></tr>
-        <tr class="best"><td>Visión + ADE <span class="rowtag">mejor absoluto</span></td><td class="cap">78.68</td><td class="cap">78.36</td><td>paga ADE / img</td></tr>
+        <tr><td>EasyOCR + visión <span class="rowtag">OCR ruidoso</span></td><td>85.10</td><td>89.33</td><td>gratis</td></tr>
+        <tr><td>Solo-visión <span class="rowtag">mejor autónomo</span></td><td>86.93</td><td>91.75</td><td>gratis</td></tr>
+        <tr class="best"><td>Visión + ADE <span class="rowtag">mejor absoluto</span></td><td class="cap">94.77</td><td class="cap">103.38</td><td>paga ADE / img</td></tr>
       </tbody>
     </table>
   </div></div>
 
-  <p class="measure" style="margin-top:20px">El delta de ADE <strong>se mantuvo al escalar</strong>:
-  <strong>+4.08 CIDEr</strong> sobre el modelo solo-visión, confirmando en full train lo que se vio en el
-  subset. <strong>ADE y el fine-tuning de visión son ejes complementarios</strong> —adaptar <em>cómo ve</em>
-  el modelo y darle <em>contexto de lectura</em> se suman, no se solapan. Es el mejor resultado del
-  proyecto (78.7), con el trade-off explícito: rinde más, pero deja de ser autónomo.</p>
+  <p class="measure" style="margin-top:20px">El delta de ADE <strong>se mantuvo —y creció— al escalar</strong>:
+  <strong>+7.84 CIDEr</strong> global (<strong>+11.63 en texto</strong>) sobre el modelo solo-visión,
+  confirmando a escala completa lo que se vio a 20k. <strong>ADE y el fine-tuning de visión son ejes
+  complementarios</strong> —adaptar <em>cómo ve</em> el modelo y darle <em>contexto de lectura</em> se
+  suman, no se solapan. Es el mejor resultado del proyecto (94.8), con el trade-off explícito: rinde más,
+  pero deja de ser autónomo.</p>
 
   <p class="muted measure" style="font-size:14px;margin-top:20px"><strong>Nota de completitud.</strong>
-  La tabla incluye <strong>EasyOCR + visión</strong> por rigor: el OCR ruidoso <strong>resta −4.3</strong>
-  (70.3 vs 74.6), casi el espejo del <strong>+4.1</strong> que suma ADE. El orden <strong>EasyOCR &lt;
-  control &lt; Landing&nbsp;AI ADE</strong> se replica en <em>ambos</em> regímenes (subset de 20k y train
-  completo). Y el daño de EasyOCR <em>crece</em> al escalar (−2.2 → −4.3): el prefijo ruidoso también
+  La tabla incluye <strong>EasyOCR + visión</strong> por rigor: el OCR ruidoso <strong>resta −1.8</strong>
+  (85.1 vs 86.9), mientras ADE <strong>suma +7.8</strong>. El orden <strong>EasyOCR &lt;
+  control &lt; Landing&nbsp;AI ADE</strong> se replica en <em>ambos</em> regímenes (20k y train
+  completo). Y el daño de EasyOCR <em>crece</em> al escalar (−0.8 → −1.8): el prefijo ruidoso también
   limita cuánto aprovecha el modelo de más datos. No basta con “tener OCR” — <strong>la calidad del OCR
-  es decisiva</strong>.</p>
+  es decisiva</strong>. <em>Evaluación sobre val completo (7 542), con ADE precomputado para el 98.9 % de
+  las imágenes con texto.</em></p>
 </section>
 
 <!-- 7 MÉTRICAS -->
@@ -481,30 +484,30 @@
   <p class="measure lead">CIDEr/BLEU solo premian coincidir con las referencias humanas —cortas y a veces
   imprecisas en VizWiz—. Se añadieron tres métricas: <strong>CLIPScore</strong> (alineación imagen↔caption,
   sin referencia), y <strong>BERTScore</strong> y <strong>SBERT</strong> (similitud semántica con las refs).
-  Evaluadas sobre las 2 000 imágenes de val.</p>
+  Evaluadas sobre el conjunto de validación completo (7 542 imágenes).</p>
 
   <div class="tablecard"><div class="scroll">
     <table>
       <thead><tr><th>Modelo</th><th>CIDEr</th><th>BLEU-4</th><th>ROUGE-L</th><th>CLIPScore</th><th>BERTScore</th><th>SBERT</th></tr></thead>
       <tbody>
-        <tr><td>BLIP + visión</td><td>74.66</td><td>27.58</td><td>49.04</td><td>0.73</td><td>49.82</td><td>66.79</td></tr>
-        <tr><td>BLIP + ADE</td><td class="cap">78.68</td><td>27.18</td><td>47.34</td><td>0.74</td><td style="color:var(--muted)">47.00</td><td>66.90</td></tr>
-        <tr><td>GIT-large</td><td>74.07</td><td class="cap">27.79</td><td>49.02</td><td>0.73</td><td class="cap">51.76</td><td class="cap">69.34</td></tr>
-        <tr><td>Qwen2.5-VL</td><td style="color:var(--muted)">62.30</td><td style="color:var(--muted)">19.60</td><td style="color:var(--muted)">44.10</td><td>0.73</td><td>51.60</td><td>65.97</td></tr>
-        <tr><td>LLaVA-1.5-7B <span style="color:var(--muted)">(completa)</span></td><td style="color:var(--muted)">14.21</td><td style="color:var(--muted)">12.52</td><td style="color:var(--muted)">33.78</td><td>0.74</td><td style="color:var(--muted)">30.93</td><td style="color:var(--muted)">61.02</td></tr>
-        <tr><td><strong>LLaVA-1.5-7B (1er enunciado)</strong></td><td class="cap">78.66</td><td>27.04</td><td class="cap">49.41</td><td>0.74</td><td class="cap">55.70</td><td class="cap">69.85</td></tr>
+        <tr><td>BLIP + visión</td><td>86.93</td><td>27.93</td><td>49.83</td><td>0.74</td><td>50.19</td><td>67.87</td></tr>
+        <tr><td>BLIP + ADE</td><td class="cap">94.77</td><td class="cap">29.46</td><td class="cap">50.51</td><td>0.75</td><td>50.07</td><td>69.33</td></tr>
+        <tr><td>GIT-large</td><td>84.54</td><td>28.12</td><td>49.75</td><td>0.74</td><td>52.00</td><td>69.43</td></tr>
+        <tr><td>Qwen2.5-VL</td><td style="color:var(--muted)">70.54</td><td style="color:var(--muted)">20.46</td><td style="color:var(--muted)">44.89</td><td>0.74</td><td>51.14</td><td>65.90</td></tr>
+        <tr><td>LLaVA-1.5-7B <span style="color:var(--muted)">(completa)</span></td><td style="color:var(--muted)">15.20</td><td style="color:var(--muted)">12.62</td><td style="color:var(--muted)">33.93</td><td>0.76</td><td style="color:var(--muted)">31.21</td><td style="color:var(--muted)">60.89</td></tr>
+        <tr><td><strong>LLaVA-1.5-7B (1er enunciado)</strong></td><td>90.15</td><td>27.77</td><td>50.04</td><td>0.75</td><td class="cap">56.10</td><td class="cap">69.76</td></tr>
       </tbody>
     </table>
   </div></div>
   <p class="measure" style="font-size:14px;color:var(--muted);margin-top:10px">Longitud media de la caption:
-  ~11 palabras (BLIP/GIT) · 15 (Qwen) · <strong>23.9 (LLaVA completa) → 10.8 (LLaVA 1er enunciado)</strong> —
+  ~11 palabras (BLIP/GIT) · 11 (Qwen) · <strong>23.7 (LLaVA completa) → 10.6 (LLaVA 1er enunciado)</strong> —
   frente a ~12 de las referencias humanas.</p>
 
   <div class="measure">
     <p style="margin-top:24px"><strong>Las métricas se contradicen — y ahí está la lección.</strong> Mira la
-    diagonal: <strong>ADE</strong> es el <em>más alto</em> en CIDEr (78.7) pero el <em>más bajo</em> en
-    BERTScore (47.0); <strong>Qwen</strong> es el <em>más bajo</em> en CIDEr (62.3) pero casi el <em>más
-    alto</em> en BERTScore (51.6). No es ruido: cada métrica premia una noción distinta de calidad.</p>
+    diagonal: <strong>ADE</strong> es el <em>más alto</em> en CIDEr (94.8) pero de los <em>más bajos</em> en
+    BERTScore (50.1); <strong>Qwen</strong> es el <em>más bajo</em> en CIDEr (70.5) pero su
+    BERTScore (51.1) supera al de ADE. No es ruido: cada métrica premia una noción distinta de calidad.</p>
     <p><strong>CIDEr</strong> premia acertar el <em>texto/marca exacto</em> de las refs (n-gramas) — el
     fuerte de ADE. <strong>BERTScore/SBERT</strong> premian oraciones <em>fluidas y semánticamente
     completas</em> — el fuerte de GIT y Qwen. <strong>CLIPScore no discrimina</strong> (plano ~0.73):
@@ -519,16 +522,16 @@
     En crudo genera captions de <strong>23.9 palabras</strong> que, tras una primera oración impecable,
     <em>degeneran en repetición patológica</em> (<span style="color:var(--muted)">"…a bottle of night time
     medicine. <span style="font-family:var(--mono,monospace)">50 mg. 100 tablets. 100% natural…</span>"</span>).
-    Eso hunde <em>todas</em> las métricas (CIDEr 14.2, BERTScore 30.9). Pero <strong>truncar al primer
-    enunciado</strong> —post-proceso trivial y determinista— lo transforma: <strong>CIDEr 78.7</strong>
-    (empata el mejor absoluto, ADE, pero <em>de forma autónoma</em> sin API de pago) y <strong>#1 en BERTScore
-    (55.7) y SBERT (69.9)</strong>.</p>
+    Eso hunde <em>todas</em> las métricas (CIDEr 15.2, BERTScore 31.2). Pero <strong>truncar al primer
+    enunciado</strong> —post-proceso trivial y determinista— lo transforma: <strong>CIDEr 90.2</strong>
+    (el mejor CIDEr <em>autónomo</em>, sobre solo-visión 86.9; ~4.6 pts bajo el ADE de pago, 94.8) y
+    <strong>#1 en BERTScore (56.1) y SBERT (69.8)</strong> de todos.</p>
     <p style="border-left:3px solid var(--good);padding-left:16px;color:var(--ink)">
-    <strong>La lección más fuerte del proyecto sobre evaluación:</strong> el CIDEr 14.2 no medía "mala
+    <strong>La lección más fuerte del proyecto sobre evaluación:</strong> el CIDEr 15.2 no medía "mala
     comprensión" —LLaVA es el que mejor lee el texto— sino un <em>defecto de formato podable en una línea</em>.
-    Ninguna métrica lo detectó; solo mirar las captions y truncar reveló que el modelo subyacente era el mejor.
+    Ninguna métrica lo detectó; solo mirar las captions y truncar reveló un modelo de primer nivel oculto.
     <strong>Capacidad y presentación son ejes distintos</strong>, y las métricas agregadas los confunden. El
-    coste: LLaVA es 7B (~30× BLIP) y ~2 s/imagen — imbatible en calidad, pero BLIP gana en eficiencia.</p>
+    coste: LLaVA es 7B (~30× BLIP) y ~2 s/imagen — sobresaliente en calidad, pero BLIP gana en eficiencia.</p>
   </div>
 </section>
 
@@ -543,17 +546,17 @@
       <li><b>Evaluación.</b> El test es de referencias ocultas y no evaluable localmente; <b>val</b> es el conjunto de evaluación válido.</li>
     </ul>
     <p class="muted" style="font-size:14px;margin-top:18px"><strong>Alternativas de VLM exploradas.</strong>
-    <strong>GIT-large</strong>: en 20k <em>superaba</em> a BLIP (69.3 vs 64.7) pero la ventaja no se
-    sostuvo — a train completo con rango pareado (r=32) llega a <strong>73.9</strong>, cuasi-empate con
-    BLIP solo-visión (74.6). <strong>Qwen2.5-VL-3B</strong> (QLoRA 4-bit en 8 GB, ~14× más lento): su
+    <strong>GIT-large</strong>: en el prototipo de 20k <em>superaba</em> a BLIP, pero la ventaja no se
+    sostuvo — a train completo (r=32 pareado) llega a <strong>84.5</strong>, por debajo de
+    BLIP solo-visión (86.9). <strong>Qwen2.5-VL-3B</strong> (QLoRA 4-bit en 8 GB, ~14× más lento): su
     prior bilingüe <em>fuga chino</em> en 26 % de captions (hundía el CIDEr); forzando salida en inglés
-    llega a <strong>63.6</strong> (20k) — mejor que BLIP en imágenes con texto, peor sin texto, sin
-    superar a GIT/BLIP. <strong>LLaVA-1.5-7B</strong> (QLoRA 4-bit en 8 GB, ~21 h para 20k): cabe y no fuga
-    idioma, y <em>lee el texto mejor que ningún otro</em>. En crudo es verboso (23.9 palabras) y degenera en
-    repetición, hundiendo las métricas (CIDEr 14.2) — pero <strong>truncado al primer enunciado alcanza CIDEr
-    78.7 (empata al mejor absoluto, autónomamente) y es #1 en BERTScore/SBERT</strong>. Es el único alternativo
-    que <em>iguala o supera</em> a BLIP en calidad — al coste de 7B params (~30×) y ~2 s/imagen.
-    <strong>En calidad pura, LLaVA (truncado) es el techo; en eficiencia, BLIP sigue ganando.</strong>
+    llega a <strong>70.5</strong>, bastante por debajo de GIT/BLIP. <strong>LLaVA-1.5-7B</strong>
+    (QLoRA 4-bit en 8 GB, ~21 h para 20k): cabe y no fuga
+    idioma, y <em>lee el texto mejor que ningún otro</em>. En crudo es verboso (23.7 palabras) y degenera en
+    repetición, hundiendo las métricas (CIDEr 15.2) — pero <strong>truncado al primer enunciado da el mejor
+    CIDEr autónomo (90.2, &gt; 86.9 de BLIP solo-visión) y es #1 en BERTScore/SBERT</strong> de todos. Es el
+    único alternativo que <em>supera</em> a BLIP en calidad autónoma — al coste de 7B params (~30×) y ~2 s/imagen.
+    <strong>El mejor CIDEr absoluto sigue siendo BLIP+ADE (94.8, de pago); en eficiencia, BLIP solo gana.</strong>
     Lecciones: un prototipo de bajo dato puede engañar (validar a escala y con hiperparámetros pareados);
     los VLM bilingües fugan idioma; los VLM-LLM grandes traen un prior verboso —a veces un simple post-proceso
     (truncar) separa un modelo excelente de sus métricas hundidas—; y capacidad ≠ presentación. El podio de
@@ -585,7 +588,7 @@ python baseline_blip_ocr.py --ocr --ocr-cache ocr_cache_landingai.json --ocr-cle
 python distill_teacher_gen.py --adapter ~/wizviz/runs/blip_ade_full
 python baseline_blip_distill.py --distill --teacher-cache teacher_captions.json
 
-<span class="cm"># Mejor absoluto (78.7): visión + ADE, train completo (requiere créditos ADE)</span>
+<span class="cm"># Mejor absoluto (94.8): visión + ADE, train completo (requiere créditos ADE)</span>
 bash run_ade_vision_phaseB.sh</pre>
 
   <div class="files">
@@ -596,14 +599,14 @@ bash run_ade_vision_phaseB.sh</pre>
     <div class="file"><div class="fn">ocr_compare.py</div><div class="fd">Comparación EasyOCR vs Landing AI (Fase 1).</div></div>
     <div class="file"><div class="fn">baseline_blip_ocr.py</div><div class="fd">Captioning con prefijo OCR + eval por subconjunto.</div></div>
     <div class="file"><div class="fn">baseline_blip_distill.py</div><div class="fd">Destilación: pseudo-captions como target (Fases 4 / 4b).</div></div>
-    <div class="file"><div class="fn">run_ade_vision_phaseB.sh</div><div class="fd">Mejor absoluto (78.7): visión + ADE, train completo.</div></div>
+    <div class="file"><div class="fn">run_ade_vision_phaseB.sh</div><div class="fd">Mejor absoluto (94.8): visión + ADE, train completo.</div></div>
     <div class="file"><div class="fn">baseline_git.py</div><div class="fd">VLM alternativo GIT-large (explorado, no gana a escala).</div></div>
   </div>
 </section>
 
 <footer>
   <div>VizWiz-Captions: Gurari et&nbsp;al., <span class="it" style="font-style:italic">Captioning Images Taken by People Who Are Blind</span> (ECCV 2020).</div>
-  <div class="mono" style="margin-top:6px">Reporte generado a partir de las corridas del 2026-08-21 · métricas sobre 2 000 imágenes de val, beam = 3.</div>
+  <div class="mono" style="margin-top:6px">Reporte generado a partir de las corridas del 2026-08-21 · métricas sobre el conjunto de validación completo (7 542 imágenes), beam = 3.</div>
 </footer>
 
 </div>

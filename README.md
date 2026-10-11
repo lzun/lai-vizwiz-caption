@@ -1,19 +1,21 @@
 # VizWiz-Captions — Experimentos de Image Captioning
 
 Bitácora del proyecto: dataset, entorno, fine-tuning (BLIP + LoRA), OCR, escalado y
-alternativas de VLM. Última actualización: **2026-10-06**.
+alternativas de VLM. Última actualización: **2026-10-10** (evaluación sobre val completo, 7 542).
 
 > **TL;DR** — Image captioning sobre VizWiz-Captions, todo con LoRA en una laptop RTX 5060
-> (8 GB) **dentro de WSL2**. Partiendo de BLIP-base (CIDEr 43.5 sin adaptar):
-> - 🥇 **Mejor absoluto: CIDEr 78.7** (val) — BLIP + fine-tuning de visión + prefijo de descripción
+> (8 GB) **dentro de WSL2**. Partiendo de BLIP-base (CIDEr 47.3 sin adaptar). Métricas sobre el
+> **conjunto de validación completo (7 542 imágenes)**:
+> - 🥇 **Mejor absoluto: CIDEr 94.8** (val) — BLIP + fine-tuning de visión + prefijo de descripción
 >   de Landing AI ADE. Requiere pagar ADE por imagen en inferencia.
-> - 🥈 **Mejor autónomo: CIDEr 74.6** (val) — BLIP + fine-tuning de visión (LoRA texto+visión, r=32),
+> - 🥈 **Mejor autónomo: CIDEr 86.9** (val) — BLIP + fine-tuning de visión (LoRA texto+visión, r=32),
 >   gratis y local.
 >
-> **Hallazgos clave:** la palanca decisiva es adaptar el **encoder de visión** (+12.4); la **calidad
-> del OCR es decisiva** (EasyOCR resta, ADE suma; simetría ~±4); ADE y visión se **complementan** (no
+> **Hallazgos clave:** la palanca decisiva es adaptar el **encoder de visión** (+15.5); la **calidad
+> del OCR es decisiva** (EasyOCR resta, ADE suma +7.8); ADE y visión se **complementan** (no
 > son redundantes); en VizWiz gana la **descripción**, no la transcripción literal. GIT-large como
-> backbone alternativo cuasi-empata a BLIP a escala. Ver §5–§9.
+> backbone alternativo queda por debajo de BLIP a escala. Ver §5–§9.
+> *(Nota: CIDEr no es comparable entre conjuntos de evaluación; todas las cifras son sobre val completo.)*
 
 ---
 
@@ -215,24 +217,24 @@ python infer_caption.py --split val --num 4 --base-only
 
 ## 5. Resultados
 
-Evaluación sobre **2 000 imágenes de val**, beam = 3.
+Evaluación sobre el **conjunto de validación completo (7 542 imágenes)**, beam = 3.
 
 | Modelo | CIDEr | BLEU-4 | BLEU-1 | ROUGE-L |
 |--------|------:|-------:|-------:|--------:|
-| BLIP base (sin fine-tuning) | 43.49 | 20.87 | 63.27 | 43.09 |
-| LoRA · 20k pares · 2 épocas | 54.40 | 22.59 | 65.57 | 45.99 |
-| LoRA texto · train completo · 3 épocas | 60.28 | 24.26 | 67.18 | 46.83 |
-| LoRA texto+visión (r=32) · full · 2 épocas | 72.67 | 27.25 | 69.93 | 48.97 |
-| **LoRA texto+visión (r=32) · full · 4 épocas** | **74.60** | **27.51** | **70.38** | **49.02** |
+| BLIP base (sin fine-tuning) | 47.27 | 19.54 | 61.29 | 42.75 |
+| LoRA · 20k pares · 2 épocas | 61.91 | 22.08 | 64.47 | 45.93 |
+| LoRA texto · train completo · 3 épocas | 69.10 | 24.20 | 66.40 | 47.28 |
+| LoRA texto+visión (r=32) · full · 2 épocas | 84.63 | 27.60 | 69.60 | 49.64 |
+| **LoRA texto+visión (r=32) · full · 4 épocas** | **86.93** | **27.93** | **70.15** | **49.83** |
 
-- El fine-tuning aporta **+16.8 CIDEr** sobre el base; escalar de 20k → 100k pares suma otros +5.9.
-- **Escalar al encoder de visión es el mayor salto: +12.4 CIDEr** (60.3 → 72.7) al aplicar LoRA
+- El fine-tuning aporta **+14.6 CIDEr** sobre el base; escalar de 20k → 100k pares suma otros +7.2.
+- **Escalar al encoder de visión es el mayor salto: +15.5 CIDEr** (69.1 → 84.6) al aplicar LoRA
   también al ViT (`qkv`) con r=32. Adaptar las *features visuales* al dominio (fotos borrosas,
   ángulos raros) pesa mucho más que solo adaptar el decoder de texto.
 - Entrenamiento texto full: 3 épocas en ~76 min. Escalado (texto+visión): 2 épocas en **~104 min**
   (32 pares/s, VRAM 7.0/8.1 GB sin OOM, batch 12, grad-checkpointing no-reentrante disponible).
-- **74.60 es el mejor modelo AUTÓNOMO** (gratis en inferencia). Sumar el prefijo de descripción de
-  Landing AI ADE lo lleva a **78.68** (mejor absoluto, pero de pago en inferencia) — ver §6.
+- **86.93 es el mejor modelo AUTÓNOMO** (gratis en inferencia). Sumar el prefijo de descripción de
+  Landing AI ADE lo lleva a **94.77** (mejor absoluto, pero de pago en inferencia) — ver §6.
 - Ejes ya explorados y saturados: rango (r=32 óptimo, r=64 no ayuda), épocas (4, rendimientos
   decrecientes), lr (1e-4), dropout (0.05). Ver checklist en §8.
 
@@ -280,37 +282,37 @@ crudos baratos; Landing AI aporta texto+descripción de más calidad pero con co
 Se inyectó el texto de **EasyOCR** (precomputado con `ocr_precompute.py`) como **prefijo
 condicional del decoder** de BLIP: en entrenamiento se enmascara el prefijo en la loss; en
 inferencia se genera a partir de `[CLS]+<OCR>` y se recorta el prefijo. Experimento A/B controlado
-sobre el **mismo subset de 20k pares / 2 épocas** (`baseline_blip_ocr.py`), evaluando en 2 000 val
-con métricas **desglosadas por `text_detected`**.
+sobre el **mismo subset de 20k pares / 2 épocas** (`baseline_blip_ocr.py`), evaluando en **val
+completo (7 542)** con métricas **desglosadas por `text_detected`**.
 
 | Subconjunto (CIDEr) | Control (sin OCR) | Con OCR (EasyOCR) | Δ |
 |---------------------|------------------:|------------------:|----:|
-| Todas (n=2000)      | 54.49 | 51.14 | **−3.35** |
-| **Con texto** (n=1559) | 51.68 | 47.37 | **−4.31** |
-| Sin texto (n=441)   | 62.18 | 62.43 | +0.25 |
+| Todas (n=7542)      | 61.87 | 60.67 | **−1.20** |
+| **Con texto** (n=5010) | 61.63 | 60.02 | **−1.61** |
+| Sin texto (n=2532)   | 59.60 | 59.26 | −0.34 |
 
 **Conclusión: la inyección naíf de OCR con EasyOCR NO ayuda — empeora, y justo en las imágenes
-con texto.** El experimento es fiable: el subconjunto *sin texto* (donde no se inyecta OCR) queda
-idéntico, así que el daño viene del **contenido ruidoso** del OCR, no de la mecánica. EasyOCR es
+con texto.** El experimento es fiable: el subconjunto *sin texto* (donde casi no se inyecta OCR) queda
+prácticamente igual, así que el daño viene del **contenido ruidoso** del OCR, no de la mecánica. EasyOCR es
 demasiado ruidoso en estas fotos degradadas (ver Fase 1). Hay ganancias puntuales (p. ej. una
 botella pasó de *"bottle of cough"* a *"bottle of medicine"*), pero el ruido domina en promedio.
 
 ### Fase 3 — Prefijo con Landing AI ADE (dos variantes)
 
 Se repitió el A/B usando **Landing AI ADE** como fuente del prefijo, precomputado en concurrencia
-(`ocr_landingai_precompute.py`, solo imágenes con `text_detected` → ~4 500 créditos, 0 fallos).
-Dos limpiezas del texto (`--ocr-clean`): **solo-texto** (transcripción literal, se quitan los
-bloques `<description>`) y **ADE completo** (descripción de escena + texto). Mismo subset de 20k / 2 épocas.
+(`ocr_landingai_precompute.py`, solo imágenes con `text_detected`). Dos limpiezas del texto
+(`--ocr-clean`): **solo-texto** (transcripción literal, se quitan los bloques `<description>`) y
+**ADE completo** (descripción de escena + texto). Mismo subset de 20k / 2 épocas, eval en val completo.
 
-| Variante (CIDEr) | Global | Con texto (n=1559) | Sin texto (n=441) |
+| Variante (CIDEr) | Global | Con texto (n=5010) | Sin texto (n=2532) |
 |------------------|-------:|-------------------:|------------------:|
-| Control (sin OCR)            | 54.49 | 51.68 | 62.18 |
-| EasyOCR                      | 51.14 | 47.37 | 62.43 |
-| Landing AI — solo texto      | 52.38 | 49.22 | 62.23 |
-| **Landing AI — ADE completo**| **56.99** | **54.84** | 63.26 |
+| Control (sin OCR)            | 61.87 | 61.63 | 59.60 |
+| EasyOCR                      | 60.67 | 60.02 | 59.26 |
+| Landing AI — solo texto      | 61.73 | 61.70 | 59.46 |
+| **Landing AI — ADE completo**| **69.99** | **73.96** | 59.56 |
 
 **Progresión monótona y clara:** EasyOCR (ruidoso) < LA solo-texto (limpio pero literal) < LA ADE
-completo — y **solo la última supera al control** (+2.5 global, **+3.2 en imágenes con texto**).
+completo — y **solo la última supera al control** (+8.1 global, **+12.3 en imágenes con texto**).
 
 **Interpretación honesta:** lo que ayuda **no es "leer el texto"** (el solo-texto literal sigue por
 debajo del control), sino la **descripción de escena** de ADE, que actúa como señal de un captioner
@@ -319,7 +321,7 @@ ganadora requiere una llamada a Landing AI (~1 crédito/img) también en inferen
 
 **Conclusión de las 3 fases:** el OCR *literal* (barato o caro) no mejora el captioning en VizWiz
 —las captions humanas describen escenas, no transcriben—; pero inyectar la **descripción
-multimodal** de una herramienta fuerte sí ayuda (+3.2 CIDEr en imágenes con texto).
+multimodal** de una herramienta fuerte sí ayuda (+12.3 CIDEr en imágenes con texto).
 
 ### Fase 4 — Destilación desde ADE (resultado negativo)
 
@@ -330,13 +332,13 @@ usar la primera oración de la descripción de ADE como **pseudo-caption extra**
 
 | Modelo (CIDEr) | Global | Con texto | Sin texto | Dep. inferencia |
 |----------------|-------:|----------:|----------:|-----------------|
-| Control                  | 55.14 | 52.28 | 62.86 | ninguna |
-| Fase 3 (ADE prefijo)     | 56.99 | 54.84 | 63.26 | Landing AI/img |
-| **Destilado (Fase 4)**   | **33.54** | 29.53 | 46.67 | ninguna |
+| Control                  | 61.52 | 61.27 | 59.29 | ninguna |
+| Fase 3 (ADE prefijo)     | 69.99 | 73.96 | 59.56 | Landing AI/img |
+| **Destilado (Fase 4)**   | **35.96** | 31.33 | 43.49 | ninguna |
 
-**Empeoró mucho (−21.6 CIDEr).** La destilación **contamina el estilo**: BLIP aprende la prosa
+**Empeoró mucho (−25.6 CIDEr).** La destilación **contamina el estilo**: BLIP aprende la prosa
 verbosa de ADE (*"a close-up, slightly blurry photograph of a red, white and blue tube of
-toothpaste…"*) y la aplica en todas partes, incluso en imágenes sin texto (62.86→46.67, donde no
+toothpaste…"*) y la aplica en todas partes, incluso en imágenes sin texto (59.3→43.5, donde no
 había pseudo-captions). Como CIDEr/BLEU premian coincidir con las captions humanas **cortas**, el
 desajuste de estilo domina. Bastó un ~10% de ejemplos verbosos. El **conocimiento** sí se transfiere
 (*"bottle of cough"* → *"medicine bottle"*), pero el estilo lo arruina.
@@ -352,16 +354,16 @@ estilo-VizWiz). Se generan sus captions CON prefijo ADE (`distill_teacher_gen.py
 
 | Modelo (CIDEr) | Global | Con texto | Sin texto | Dep. inferencia |
 |----------------|-------:|----------:|----------:|-----------------|
-| Control                  | 55.14 | 52.28 | 62.86 | ninguna |
-| Fase 3 (ADE prefijo)     | **56.99** | **54.84** | 63.26 | Landing AI/img 💰 |
-| Fase 4 (prosa ADE)       | 33.54 | 29.53 | 46.67 | ninguna |
-| **Fase 4b (profesor)**   | 54.19 | 50.89 | 63.31 | ninguna |
+| Control                  | 61.52 | 61.27 | 59.29 | ninguna |
+| Fase 3 (ADE prefijo)     | **69.99** | **73.96** | 59.56 | Landing AI/img 💰 |
+| Fase 4 (prosa ADE)       | 35.96 | 31.33 | 43.49 | ninguna |
+| **Fase 4b (profesor)**   | 60.92 | 60.54 | 58.92 | ninguna |
 
-**El estilo era el problema** (33.54 → 54.19; el subconjunto sin texto se recupera del todo). **Pero
-la destilación no aporta beneficio neto:** la 4b queda a la par del control (−0.9, dentro del ruido)
+**El estilo era el problema** (35.96 → 60.92; el subconjunto sin texto se recupera del todo). **Pero
+la destilación no aporta beneficio neto:** la 4b queda a la par del control (−0.6, dentro del ruido)
 y por debajo de la Fase 3. Se **neutraliza el daño, pero no se captura la ganancia.**
 
-**Conclusión del hilo de OCR (4 fases):** la ganancia de la descripción de ADE (+3.2 CIDEr en
+**Conclusión del hilo de OCR (4 fases):** la ganancia de la descripción de ADE (+12.3 CIDEr en
 imágenes con texto) **solo se materializa con la señal fresca por-imagen en inferencia** (Fase 3, que
 paga ADE). Ni el OCR barato (Fase 2), ni destilar la prosa (Fase 4), ni destilar de un profesor
 estilo-matched (Fase 4b) la meten "gratis" en un modelo autónomo. El valor del VLM fuerte reside en
@@ -415,38 +417,37 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 ## 8. Próximos pasos
 
 - [x] **OCR — Fase 1**: comparar EasyOCR vs Landing AI ADE (ver §6). Landing AI 3.4× más texto y más robusto.
-- [x] **OCR — Fase 2**: prefijo OCR (EasyOCR) en BLIP → **resultado negativo** (CIDEr −3.35, −4.31 en imágenes con texto). El OCR ruidoso perjudica.
-- [x] **OCR — Fase 3**: prefijo Landing AI ADE. Solo-texto sigue bajo el control; **ADE completo (descripción) SÍ mejora** (+2.5 global, **+3.2 en imágenes con texto**). Ayuda la descripción del VLM, no el OCR literal.
-- [x] **OCR — Fase 4**: destilación (pseudo-captions de ADE) → **negativo** (CIDEr 55→34): contamina el estilo hacia la prosa verbosa de ADE. El conocimiento se transfiere pero el estilo arruina la métrica.
-- [x] **OCR — Fase 4b**: destilación estilo-matched (profesor = modelo Fase 3). Arregla el colapso de la Fase 4 (34→54) pero **queda a la par del control** — neutraliza el daño, no captura la ganancia. La ventaja de ADE solo es realizable pagándolo en inferencia (Fase 3).
+- [x] **OCR — Fase 2**: prefijo OCR (EasyOCR) en BLIP → **resultado negativo** (CIDEr −1.20, −1.61 en imágenes con texto). El OCR ruidoso perjudica.
+- [x] **OCR — Fase 3**: prefijo Landing AI ADE. Solo-texto sigue bajo el control; **ADE completo (descripción) SÍ mejora** (+8.1 global, **+12.3 en imágenes con texto**). Ayuda la descripción del VLM, no el OCR literal.
+- [x] **OCR — Fase 4**: destilación (pseudo-captions de ADE) → **negativo** (CIDEr 62→36): contamina el estilo hacia la prosa verbosa de ADE. El conocimiento se transfiere pero el estilo arruina la métrica.
+- [x] **OCR — Fase 4b**: destilación estilo-matched (profesor = modelo Fase 3). Arregla el colapso de la Fase 4 (36→61) pero **queda a la par del control** — neutraliza el daño, no captura la ganancia. La ventaja de ADE solo es realizable pagándolo en inferencia (Fase 3).
 - [x] **Test set**: NO evaluable localmente. Las captions de test son oficialmente **ocultas** (VizWiz publica solo train/val). El CSV tiene captions TEST pero con nombres originales que **no mapean** a los archivos renombrados (se intentó un offset `20000+i` que falla; `test.json` no tiene captions con qué anclar por contenido). **Val es el conjunto de evaluación válido.**
-- [x] Escalar el fine-tuning: LoRA texto+visión (r=32) → **CIDEr 60.3 → 72.7 (+12.4)**. El encoder de
+- [x] Escalar el fine-tuning: LoRA texto+visión (r=32) → **CIDEr 69.1 → 84.6 (+15.5)**. El encoder de
   visión era el eje clave (`--target-modules query,value,qkv --lora-r 32 --save-steps 800`, reanudable).
-- [x] Escalar más: 2→4 épocas → CIDEr 72.7 → **74.6 (+1.9)**. Rendimientos decrecientes sin overfitting;
+- [x] Escalar más: 2→4 épocas → CIDEr 84.6 → **86.9 (+2.3)**. Rendimientos decrecientes sin overfitting;
   la palanca era la visión, no las épocas. (Una corrida crasheó con `CUDA error: unknown error` y se
   **reanudó desde checkpoint** sin re-entrenar — el diseño reanudable funcionó.)
-- [x] Escalar r=64 sobre texto+visión → CIDEr 74.02 (vs 74.60 con r=32): **no ayuda, saturado**. r=32 es
-  el punto dulce. Fin de los experimentos de encoder de visión. **Mejor config: texto+visión, r=32, 4 épocas.**
-- [x] Afinar hiperparámetros (r=32 fijo): **ningún cambio supera 74.60**. dropout 0.10 perjudica (70.6);
-  lr=2e-4 gana a 2 épocas (73.5 vs 72.7) pero **pierde a 4 épocas (73.7 vs 74.6)** — el ranking se
-  invierte, por eso se confirmó a 4 ép. **Óptimo: lr=1e-4, dropout=0.05, r=32, texto+visión, 4 épocas.**
-- [x] **Avenida ADE + visión — Fase A** (ver §9): **las señales se suman.** ADE aporta +4.5 CIDEr (texto)
-  sobre el modelo con visión — más que en solo-texto (+3.2). No es redundante. **Luz verde a la Fase B.**
-- [x] **ADE + visión — Fase B** (train completo): **el delta se mantiene → CIDEr 78.68** (+4.08 sobre
-  74.60 solo-visión). Tesis validada a escala. Mejor absoluto del proyecto (de pago en inferencia);
-  mejor autónomo sigue siendo 74.60 (gratis).
-- [x] **VLM alternativo — GIT-large** (`baseline_git.py`): en 20k GIT (69.26) **superaba** a BLIP (64.73),
-  pero **no escaló**. A full train con r=32 matched: GIT-coco **73.91** vs BLIP solo-visión **74.60** →
-  cuasi-empate, BLIP marginalmente adelante (−0.69). El confound de rango era parcial (r=16→32 dio +1.1)
-  pero no flipea el resultado. **GIT es más *data-efficient* (gana con poco dato) pero no supera a BLIP a
-  escala.** Podio sin cambios; BLIP-base fue elección razonable. Lección: un prototipo de bajo dato engaña
-  — validar a escala Y con hiperparámetros pareados.
+- [x] Escalar r=64 sobre texto+visión → **no ayuda, saturado**; r=32 es el punto dulce. Fin de los
+  experimentos de encoder de visión. **Mejor config: texto+visión, r=32, 4 épocas.** *(ablations de rango/lr/dropout evaluados en el subset de 2000; el ranking no depende del conjunto.)*
+- [x] Afinar hiperparámetros (r=32 fijo): **ningún cambio supera la config base**. dropout 0.10 perjudica;
+  lr=2e-4 gana a 2 épocas pero **pierde a 4 épocas** — el ranking se invierte, por eso se confirmó a 4 ép.
+  **Óptimo: lr=1e-4, dropout=0.05, r=32, texto+visión, 4 épocas.**
+- [x] **Avenida ADE + visión — Fase A** (ver §9): **las señales se suman.** ADE aporta +10.7 CIDEr (texto)
+  sobre el modelo con visión — comparable a su efecto en solo-texto (+12.3). No es redundante. **Luz verde a la Fase B.**
+- [x] **ADE + visión — Fase B** (train completo): **el delta se mantiene → CIDEr 94.77** (+7.84 global,
+  +11.63 en texto, sobre 86.93 solo-visión). Tesis validada a escala. Mejor absoluto del proyecto (de pago
+  en inferencia); mejor autónomo sigue siendo 86.93 (gratis).
+- [x] **VLM alternativo — GIT-large** (`baseline_git.py`): en el prototipo de 20k GIT **superaba** a BLIP,
+  pero **no escaló**. A full train con r=32 matched (eval val completo): GIT-coco **84.54** vs BLIP
+  solo-visión **86.93** → BLIP adelante (−2.39). **GIT es más *data-efficient* (gana con poco dato) pero no
+  supera a BLIP a escala.** Podio sin cambios; BLIP-base fue elección razonable. Lección: un prototipo de
+  bajo dato engaña — validar a escala Y con hiperparámetros pareados.
 - [x] **VLM alternativo — Qwen2.5-VL-3B** (`baseline_qwen.py`, QLoRA 4-bit): viable en 8 GB (bitsandbytes
   funciona en Blackwell) pero **~14× más lento** (~1 par/s, 20k/2ep = ~11h). Trampa: el modelo bilingüe
-  **fuga chino** en 26% de captions → hundía el CIDEr (56.4). Bloqueando tokens CJK en generación
-  (`eval_qwen.py --block-cjk`) sube a **63.57** (global) / 64.90 (texto) / 55.79 (sin texto): mejor que
-  BLIP en imágenes con texto, pero peor sin texto (captions verbosas). **No supera a BLIP (64.7) ni GIT
-  (69.3) a 20k**, y es mucho más caro. Forzar inglés en el prompt de **entrenamiento** (re-run de 11h)
+  **fuga chino** en 26% de captions → hundía el CIDEr. Bloqueando tokens CJK en generación
+  (`eval_qwen.py --block-cjk`) da salida limpia; en **val completo** llega a **70.54** (global) / 77.16
+  (texto) / 54.13 (sin texto). **No supera a BLIP (86.9) ni GIT (84.5)**, y es mucho más caro. Forzar
+  inglés en el prompt de **entrenamiento** (re-run de 11h)
   NO lo arregla: empeora (49.36) y degenera en bucles de chino. Solo el bloqueo CJK en generación da
   salida limpia. Lección: el prior bilingüe no es suprimible por prompt/LoRA a esta escala.
 - [x] **VLM alternativo — Florence-2-large**: intentado, **bloqueado**. Su código remoto (`trust_remote_code`)
@@ -456,22 +457,23 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 - [x] **VLM alternativo — LLaVA-1.5-7B** (`baseline_llava.py`, QLoRA 4-bit nf4): **cabe en 8 GB** (smoke
   confirmó antes de comprometer el run largo) y completó 20k/2ep en **~21 h sin crashes**. English-only,
   **cero fuga de idioma** (a diferencia de Qwen). **Lee el texto mejor que ningún otro modelo** (transcribe
-  "50 mg", "100 tablets", fechas de vencimiento). En crudo es **extremadamente verboso** (23.9 palabras) y
+  "50 mg", "100 tablets", fechas de vencimiento). En crudo es **extremadamente verboso** (23.7 palabras) y
   tras una primera oración impecable **degenera en repetición patológica** ("…medicine. 50 mg. 100 tablets.
-  100% natural…"), lo que hunde TODAS las métricas: CIDEr **14.21**, BERTScore **30.93**, SBERT **61.02**.
+  100% natural…"), lo que hunde TODAS las métricas: CIDEr **15.20**, BERTScore **31.21**, SBERT **60.89**.
   **Pero truncar al primer enunciado** (`first_sentence()` en `eval_llava_extra.py`, post-proceso trivial y
-  determinista) **lo transforma en el mejor modelo del proyecto en calidad**: 10.8 palabras/caption, CIDEr
-  **78.66** (empata el mejor absoluto ADE=78.68 **pero de forma autónoma**, sin API de pago), BERTScore
-  **55.70** (#1 de todos), SBERT **69.85** (#1 de todos). `eval_llava_extra.py` computa las 4 métricas para
-  ambas variantes (completa y truncada) sobre 2000 val; captions crudas cacheadas en `llava_caps.json`.
-  **Hallazgo clave (el más fuerte sobre evaluación):** el CIDEr 14.2 no medía mala comprensión sino un
+  determinista) **lo transforma en un modelo de primer nivel en calidad**: 10.6 palabras/caption, CIDEr
+  **90.15** — el **mejor CIDEr autónomo** del proyecto (supera a solo-visión 86.93, ~4.6 pts por debajo del ADE de pago 94.77) — BERTScore
+  **56.10** (#1 de todos), SBERT **69.76** (#1 de todos). Las 4 métricas se computan sobre **val completo
+  (7542)**; captions crudas cacheadas en `llava_caps.json`/`fullval_caps/`.
+  **Hallazgo clave (el más fuerte sobre evaluación):** el CIDEr 15.2 no medía mala comprensión sino un
   *defecto de formato podable en una línea*; ninguna métrica lo detectó, solo mirar las captions y truncar.
   Capacidad ≠ presentación, y las métricas agregadas los confunden. Caveats honestos: LLaVA es 7B (~30× BLIP)
   y ~2 s/imagen; LLaVA usó greedy vs beam=3 de BLIP/GIT (decoding no 100% pareado).
 - [x] **Conclusión exploración VLMs (cerrada)**: en **eficiencia**, BLIP sigue siendo la elección correcta
   (225M, casi instantáneo; ningún VLM lo destrona a coste comparable). En **calidad absoluta**, el podio
-  **sí cambia**: **LLaVA-1.5-7B truncado al primer enunciado iguala el mejor CIDEr (78.7, autónomo) y es #1
-  en BERTScore/SBERT** — al coste de 30× params y ~2 s/imagen. GIT y Qwen no superan a BLIP; Florence-2 quedó
+  **sí cambia**: **LLaVA-1.5-7B truncado al primer enunciado da el mejor CIDEr autónomo (90.15, > 86.93
+  solo-visión) y es #1 en BERTScore/SBERT** de todos los modelos — aunque el mejor CIDEr absoluto sigue
+  siendo el ADE de pago (94.77). Todo al coste de 30× params y ~2 s/imagen. GIT y Qwen no superan a BLIP; Florence-2 quedó
   bloqueado. Patrón: los VLM-LLM grandes traen un prior verboso/bilingüe difícil de alinear vía LoRA — pero
   con LLaVA un simple post-proceso (truncar) separó un modelo excelente de sus métricas hundidas.
 - [x] **Métricas complementarias** (`eval_metrics_extra.py`): CLIPScore + BERTScore + SBERT sobre 2000 val.
@@ -488,8 +490,8 @@ su inferencia por-imagen, que un alumno pequeño no interioriza desde ~2 000 pse
 
 ## 9. Avenida ADE + visión (ejecutada — mejor resultado del proyecto)
 
-**Pregunta abierta:** la Fase 3 mostró que el prefijo ADE aporta +3.2 CIDEr, pero sobre el setup
-**débil** (20k, LoRA solo-texto, r=16). El escalado a 74.6 nunca recibió ADE. **¿Sigue aportando ADE
+**Pregunta abierta:** la Fase 3 mostró que el prefijo ADE aporta +12.3 CIDEr (texto), pero sobre el setup
+**débil** (20k, LoRA solo-texto, r=16). El escalado a 86.9 nunca recibió ADE. **¿Sigue aportando ADE
 cuando el modelo ya tiene fine-tuning del encoder de visión, o el vision-scaling ya capturó su valor
 (marcas/objetos), haciéndolo redundante?** Nunca se combinaron. Herramienta lista y verificada:
 `baseline_blip_ocr.py` ahora acepta `--target-modules query,value,qkv` (LoRA texto+visión),
@@ -499,43 +501,43 @@ cuando el modelo ya tiene fine-tuning del encoder de visión, o el vision-scalin
 
 A/B sobre el subset de 20k (ADE ya cacheado → 0 créditos), ambos con LoRA texto+visión (r=32), 4 épocas:
 
-| CIDEr (20k, texto+visión, 4 ép) | Global | Con texto | Sin texto | Δ texto vs control |
+| CIDEr (20k, texto+visión, 4 ép; eval val completo) | Global | Con texto | Sin texto | Δ texto vs control |
 |---------------------------------|-------:|----------:|----------:|-------------------:|
-| easyocr-visión (OCR ruidoso)    | 62.51  | 59.99     | 69.22     | −3.04 |
-| control-visión (sin OCR)        | 64.73  | 63.03     | 68.59     | — |
-| **ade-visión (Landing AI)**     | **68.86** | **67.55** | 71.38  | **+4.52** |
+| easyocr-visión (OCR ruidoso)    | 75.28  | 77.64     | 67.63     | −1.72 |
+| control-visión (sin OCR)        | 76.06  | 79.36     | 66.69     | — |
+| **ade-visión (Landing AI)**     | **83.41** | **90.07** | 67.17  | **+10.71** |
 
-**Veredicto: la CALIDAD del OCR es decisiva.** Orden monótono en ambos regímenes (solo-texto y visión):
-EasyOCR < control < Landing AI ADE. EasyOCR sigue perjudicando con visión (−3.04), aunque el daño se
-**amortigua** vs solo-texto (−4.31 en Fase 2) — mejores features visuales ignoran mejor el ruido, pero
-no lo vuelven útil. **ADE y el vision-scaling se COMPLEMENTAN, no son redundantes.** El delta de ADE en imágenes
-con texto **creció** de +3.2 (Fase 3, solo-texto) a +4.52 (con visión) — el vision-scaling no capturó lo
-de ADE. Bonus: hasta el subconjunto *sin texto* mejoró (+2.79, aunque ahí no se inyecta ADE), porque
-entrenar con los prefijos mejoró los pesos compartidos. Reproducir: `run_ade_vision_phaseA.sh`.
+**Veredicto: la CALIDAD del OCR es decisiva.** El orden es monótono y claro en todos los regímenes:
+EasyOCR < control < Landing AI ADE. EasyOCR con visión sigue restando en texto (−1.72), aunque menos que
+en solo-texto — mejores features visuales amortiguan el ruido pero no lo vuelven útil. **ADE y el
+vision-scaling se COMPLEMENTAN, no son redundantes:** el delta de ADE en texto es **+10.7 con visión**,
+comparable a los **+12.3 en solo-texto** (Fase 3) — el vision-scaling no capturó el valor de ADE. Bonus:
+hasta el subconjunto *sin texto* sube un poco (+0.5, aunque ahí casi no se inyecta ADE). Reproducir:
+`run_ade_vision_phaseA.sh`.
 
-**Luz verde a la Fase B**: si el delta (~+4) se mantiene al escalar, full+visión+ADE podría rondar
-~78-79 CIDEr (vs 74.60 solo-visión).
+**Luz verde a la Fase B**: si el delta en texto se mantiene al escalar, full+visión+ADE debería superar
+holgadamente al solo-visión (86.9).
 
 ### Fase B — EJECUTADA (2026-08-27): el delta se mantiene 🏆
 
 Precómputo ADE del train completo (11 729 imágenes nuevas, 0 fallos, ~11.7k créditos) + entrenamiento
-full+visión+ADE (r=32, 4 épocas). **CIDEr val: all 78.68 · con texto 78.36 · sin texto 77.14.**
+full+visión+ADE (r=32, 4 épocas). **CIDEr val completo: all 94.77 · con texto 103.38 · sin texto 74.48.**
 
-| Modelo full-train (texto+visión, 4 ép) | CIDEr all | Con texto | Δ vs control | Inferencia |
+| Modelo full-train (texto+visión, 4 ép) | CIDEr all | Con texto | Δ vs s/visión | Inferencia |
 |----------------------------------------|----------:|----------:|-------------:|------------|
-| EasyOCR + visión (OCR ruidoso)         | 70.33     | 68.35     | −4.27        | gratis |
-| Solo-visión (mejor autónomo)           | 74.60     | —         | —            | gratis |
-| **Visión + ADE (mejor absoluto)**      | **78.68** | **78.36** | +4.08        | ADE/img (pago) |
+| EasyOCR + visión (OCR ruidoso)         | 85.10     | 89.33     | −1.83        | gratis |
+| Solo-visión (mejor autónomo)           | 86.93     | 91.75     | —            | gratis |
+| **Visión + ADE (mejor absoluto)**      | **94.77** | **103.38** | +7.84        | ADE/img (pago) |
 
-**Simetría casi perfecta:** OCR malo resta ~−4.3, OCR bueno suma ~+4.1 — espejo alrededor del control.
-El orden EasyOCR < control < ADE se replica en **ambos regímenes** (20k y full). Matiz que emerge a
-escala: el daño de EasyOCR **crece** (−2.2 en 20k → −4.3 en full) porque el prefijo ruidoso limita
-cuánto exprime el modelo de más datos (control gana +9.9 de 20k→full; EasyOCR solo +7.8).
+**Asimetría reveladora:** el OCR malo resta poco (~−1.8), el OCR bueno suma mucho (~+7.8) — no es un
+espejo: ADE aporta bastante más de lo que EasyOCR daña. El orden EasyOCR < control < ADE se replica en
+**ambos regímenes** (20k y full), y el daño de EasyOCR **crece** al escalar (el prefijo ruidoso limita
+cuánto exprime el modelo de más datos).
 
-**Tesis validada a escala: +4.08 CIDEr sobre solo-visión**, dentro del ~78-79 proyectado en Fase A. ADE
+**Tesis validada a escala: +7.84 CIDEr global (+11.63 en texto) sobre solo-visión.** ADE
 y el fine-tuning de visión se complementan también con train completo. **Matiz de despliegue:** este
 modelo requiere llamar a Landing AI por imagen en inferencia (coste + latencia + dependencia). Dos
-"mejores" según criterio: **absoluto 78.68** (de pago) vs **autónomo 74.60** (gratis, local).
+"mejores" según criterio: **absoluto 94.77** (de pago) vs **autónomo 86.93** (gratis, local).
 
 ### Fase B — escalar ADE al train completo (requiere créditos) — LISTA, sin ejecutar
 
@@ -551,7 +553,7 @@ wsl -e bash /mnt/c/Users/green/Documents/GitHub/wizviz-caption/run_ade_vision_ph
 texto; ya hay ~2 900 cacheadas → faltan **~11 800**. Con ~5 500 disponibles **no alcanza para el full**
 → hace falta comprar ~6 500 más. (El precómputo es reanudable, guarda cada 50 imágenes.)
 
-**Control de comparación** = el modelo solo-visión de 74.60 (`~/wizviz/runs/blip_scaled4`); para su
+**Control de comparación** = el modelo solo-visión de 86.93 (`~/wizviz/runs/blip_scaled4`); para su
 desglose por texto/sin-texto, re-evaluarlo con `baseline_blip_ocr.py --no-train`. **Objetivo:** si el
 delta (~+4.5 en texto) se mantiene, full+visión+ADE ≈ **78-79 CIDEr**. Matiz: la variante ganadora
 **seguiría pagando ADE en inferencia** (trade-off de despliegue de la Fase 3).
@@ -560,7 +562,7 @@ delta (~+4.5 en texto) se mantiene, full+visión+ADE ≈ **78-79 CIDEr**. Matiz:
 
 ## 10. Servicio web (prototipo, 2026-10-06)
 
-`space/` empaqueta el **mejor modelo autónomo** (`blip_scaled4`, CIDEr 74.6) como servicio web con
+`space/` empaqueta el **mejor modelo autónomo** (`blip_scaled4`, CIDEr 86.9) como servicio web con
 Gradio: imagen → descripción en inglés, con UI y API HTTP (`/describe`). Listo para Hugging Face
 Spaces (`space/README.md` lleva el front-matter del Space). Ejecución, API y despliegue en
 [`space/README.md`](space/README.md).
@@ -569,17 +571,27 @@ Spaces (`space/README.md` lleva el front-matter del Space). Ejecución, API y de
 - Latencia medida: ~0.5 s/imagen en la RTX 5060, ~1.5–2 s en CPU.
 - En HF, las cuentas gratuitas ya no pueden alojar Gradio en `cpu-basic` (402, requiere PRO);
   la opción gratuita es **ZeroGPU**, y `app.py` ya es compatible (`@spaces.GPU`, torch 2.11.0).
-- Modo opcional **BLIP + ADE** (CIDEr 78.7): solo se habilita si hay `VISION_AGENT_API_KEY`;
+- Modo opcional **BLIP + ADE** (CIDEr 94.8): solo se habilita si hay `VISION_AGENT_API_KEY`;
   ~7–10 s y ~1 crédito por imagen. En un Space público no conviene poner la clave.
 - Los adaptadores (`space/adapters/`) no se versionan en git; se copian desde `~/wizviz/runs/`.
 
-**Bug encontrado al construirlo:** `BlipForConditionalGeneration.generate` descarta el **último
-token** de `input_ids` (asume que termina en `[SEP]`). En `baseline_blip_ocr.py` (`evaluate`) el
-prompt `[CLS] + prefijo` se pasa sin `[SEP]`, así que **se perdía el último token del prefijo y el
-recorte `1 + len(ocr_ids)` se comía la primera palabra generada** (típicamente "a"). El servicio lo
-corrige añadiendo un `[SEP]` de relleno. Las cifras con prefijo OCR/ADE (Fases 2–3, §9, incl. el
-78.7) se midieron con el bug; conviene re-evaluarlas (sin re-entrenar ni gastar créditos: el caché
-ADE ya existe).
+**Bug encontrado al construirlo (corregido y re-evaluado, 2026-10-06):**
+`BlipForConditionalGeneration.generate` descarta el **último token** de `input_ids` (asume que termina
+en `[SEP]`). En `baseline_blip_ocr.py` (`evaluate`) el prompt `[CLS] + prefijo` se pasaba sin `[SEP]`,
+así que **se perdía el último token del prefijo y el recorte `1 + len(ocr_ids)` se comía la primera
+palabra generada** (típicamente "a"). **Fix:** añadir un `[SEP]` de relleno al prompt (aplicado en
+`baseline_blip_ocr.py` y `compare_models.py`; verificado en `verify_blip_prefix.py`). Todas las cifras
+con prefijo OCR/ADE se **re-evaluaron** con el caché existente (sin re-entrenar) vía `reeval_ocr.py`.
+
+**Segundo cambio metodológico (2026-10-10): evaluación sobre val COMPLETO (7 542).** Todas las corridas
+previas medían sobre las *primeras 2 000* imágenes de val (el default `--max-eval-samples 2000`). Dos
+hallazgos al pasar a val completo: (i) **CIDEr no es comparable entre conjuntos** —su IDF depende del
+corpus—, por eso los absolutos suben (p. ej. solo-visión 74.6→**86.9**); (ii) la caché de ADE solo cubría
+las ~1 536 imágenes de val de las primeras 2 000, así que una eval ingenua sobre val completo corría los
+modelos ADE **sin prefijo** en la mayoría de imágenes con texto. Tras recargar créditos y **completar ADE
+al 98.9 %** de las imágenes con texto (`reeval_full.py`, `vlm_full.py`, `fullval_extra.py`), la comparación
+justa confirma y **refuerza la tesis**: visión+ADE **94.77** vs solo-visión **86.93** (+7.84 global,
+**+11.63 en texto**). El subconjunto *sin texto* queda ~idéntico (sin prefijo), confirmando la corrección.
 
 ---
 

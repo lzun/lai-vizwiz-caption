@@ -1,0 +1,187 @@
+% ---------------------------------------------------------------------------
+% Results tables for the VizWiz-Captions captioning study.
+% Requires in the preamble:
+%   \usepackage{booktabs}
+%   \usepackage{amsmath}   % for the $-$ signs in the deltas
+% Optional (nicer numeric alignment): \usepackage{siunitx}
+% All CIDEr/BLEU/ROUGE values are x100. Best value per table in bold.
+% ---------------------------------------------------------------------------
+
+% ===== Table: main fine-tuning results (README section 5) ==================
+\begin{table}[t]
+  \centering
+  \caption{Captioning results on 2{,}000 VizWiz \texttt{val} images (beam${=}3$).
+    Scaling the LoRA target to the vision encoder is the single largest lever
+    ($+12.4$ CIDEr). All values $\times100$; best in bold.}
+  \label{tab:main-results}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Model & CIDEr & BLEU-4 & BLEU-1 & ROUGE-L \\
+    \midrule
+    BLIP base (no fine-tuning)                 & 43.49 & 20.87 & 63.27 & 43.09 \\
+    LoRA, 20k pairs, 2 epochs                  & 54.40 & 22.59 & 65.57 & 45.99 \\
+    LoRA text-only, full train, 3 epochs       & 60.28 & 24.26 & 67.18 & 46.83 \\
+    LoRA text+vision ($r{=}32$), full, 2 epochs & 72.67 & 27.25 & 69.93 & 48.97 \\
+    \textbf{LoRA text+vision ($r{=}32$), full, 4 epochs}
+      & \textbf{74.60} & \textbf{27.51} & \textbf{70.38} & \textbf{49.02} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: OCR engine comparison, Phase 1 (README section 6) ============
+\begin{table}[t]
+  \centering
+  \caption{Qualitative OCR-engine comparison over 30 with-text \texttt{val}
+    images (no OCR ground truth in VizWiz). Landing AI ADE is far more robust
+    and extracts $3.4\times$ more text, but is not pure OCR: it often returns a
+    scene description rather than a verbatim transcription.}
+  \label{tab:ocr-engines}
+  \begin{tabular}{llrrl}
+    \toprule
+    Engine & Cost & Failures/empty & Chars extracted & Behavior \\
+    \midrule
+    EasyOCR (traditional, GPU) & free & 6/30 & 6{,}557 & raw OCR; degrades on hard photos \\
+    Landing AI ADE (paid)      & $\sim$30 credits & 0 & 21{,}988 ($3.4\times$) & never fails; transcribes and describes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase 2, EasyOCR prefix A/B (README section 6) ===============
+\begin{table}[t]
+  \centering
+  \caption{Phase 2 --- injecting an EasyOCR text prefix (controlled A/B, 20k
+    pairs / 2 epochs), CIDEr stratified by \texttt{text\_detected}. The noisy
+    prefix hurts precisely on the with-text subset; the no-text subset (where no
+    OCR is injected) is unchanged, confirming the effect is content-driven.}
+  \label{tab:phase2-easyocr}
+  \begin{tabular}{lrrr}
+    \toprule
+    Subset (CIDEr) & Control (no OCR) & EasyOCR & $\Delta$ \\
+    \midrule
+    All ($n{=}2000$)        & 54.49 & 51.14 & $-3.35$ \\
+    With text ($n{=}1559$)  & 51.68 & 47.37 & $-4.31$ \\
+    No text ($n{=}441$)     & 62.18 & 62.43 & $+0.25$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase 3, ADE prefix variants (README section 6) ==============
+\begin{table}[t]
+  \centering
+  \caption{Phase 3 --- Landing AI ADE prefix, two text cleanings (controlled
+    A/B, 20k pairs / 2 epochs). The ordering is monotone --- EasyOCR (noisy)
+    $<$ ADE text-only (clean but literal) $<$ full ADE --- and only the full ADE
+    (scene description) beats the control.}
+  \label{tab:phase3-ade}
+  \begin{tabular}{lrrr}
+    \toprule
+    Variant (CIDEr) & All & With text ($n{=}1559$) & No text ($n{=}441$) \\
+    \midrule
+    Control (no OCR)       & 54.49 & 51.68 & 62.18 \\
+    EasyOCR                & 51.14 & 47.37 & 62.43 \\
+    Landing AI, text-only  & 52.38 & 49.22 & 62.23 \\
+    \textbf{Landing AI, full ADE} & \textbf{56.99} & \textbf{54.84} & \textbf{63.26} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase 4, distillation from ADE (README section 6) ============
+\begin{table}[t]
+  \centering
+  \caption{Phase 4 --- distilling ADE descriptions as extra pseudo-caption
+    targets (autonomous at inference). Style contamination from ADE's verbose
+    prose collapses the metric, even on the no-text subset where no
+    pseudo-captions were added.}
+  \label{tab:phase4-distill}
+  \begin{tabular}{lrrrl}
+    \toprule
+    Model (CIDEr) & All & With text & No text & Inference dep. \\
+    \midrule
+    Control                       & 55.14 & 52.28 & 62.86 & none \\
+    \textbf{Phase 3 (ADE prefix)} & \textbf{56.99} & \textbf{54.84} & \textbf{63.26} & Landing AI/img \\
+    Phase 4 (distilled ADE prose) & 33.54 & 29.53 & 46.67 & none \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase 4b, style-matched distillation (README section 6) ======
+\begin{table}[t]
+  \centering
+  \caption{Phase 4b --- style-matched distillation (teacher ${=}$ the Phase-3
+    model, which already produces short VizWiz-style captions). Fixing the style
+    recovers the collapse of Phase 4 ($33.54\to54.19$) but only reaches parity
+    with the control: the ADE gain is neutralized, not captured.}
+  \label{tab:phase4b-distill}
+  \begin{tabular}{lrrrl}
+    \toprule
+    Model (CIDEr) & All & With text & No text & Inference dep. \\
+    \midrule
+    Control                       & 55.14 & 52.28 & 62.86 & none \\
+    \textbf{Phase 3 (ADE prefix)} & \textbf{56.99} & \textbf{54.84} & 63.26 & Landing AI/img \\
+    Phase 4 (distilled ADE prose) & 33.54 & 29.53 & 46.67 & none \\
+    Phase 4b (teacher-distilled)  & 54.19 & 50.89 & \textbf{63.31} & none \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase A, ADE + vision at 20k (README section 9) ==============
+\begin{table}[t]
+  \centering
+  \caption{Phase A --- combining the ADE prefix with vision adaptation
+    (controlled A/B, 20k pairs, text+vision $r{=}32$, 4 epochs). The signals are
+    additive: on the with-text subset ADE adds $+4.52$ CIDEr \emph{over} the
+    vision-adapted model, more than the $+3.2$ seen on the text-only backbone ---
+    ADE and vision scaling are complementary, not redundant.}
+  \label{tab:phaseA-ade-vision}
+  \begin{tabular}{lrrrr}
+    \toprule
+    CIDEr (20k, text+vision, 4 ep) & All & With text & No text & $\Delta$ text vs.\ control \\
+    \midrule
+    EasyOCR+vision (noisy OCR)     & 62.51 & 59.99 & 69.22 & $-3.04$ \\
+    Control+vision (no OCR)        & 64.73 & 63.03 & 68.59 & --- \\
+    \textbf{ADE+vision (Landing AI)} & \textbf{68.86} & \textbf{67.55} & \textbf{71.38} & \textbf{$+4.52$} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: Phase B, ADE + vision at full train (README section 9) =======
+\begin{table}[t]
+  \centering
+  \caption{Phase B --- ADE $+$ vision at full-train scale (text+vision $r{=}32$,
+    4 epochs). The $\sim\!+4$ CIDEr delta holds at scale, giving the best overall
+    result (78.68). A near-perfect symmetry emerges: bad OCR subtracts
+    ${\sim}4.3$, good OCR adds ${\sim}4.1$, mirrored around the control.}
+  \label{tab:phaseB-ade-vision}
+  \begin{tabular}{lrrrl}
+    \toprule
+    Full-train model (text+vision, 4 ep) & CIDEr (all) & With text & $\Delta$ vs.\ control & Inference \\
+    \midrule
+    EasyOCR $+$ vision (noisy OCR)        & 70.33 & 68.35 & $-4.27$ & free \\
+    Vision-only (best autonomous)         & 74.60 & ---   & ---     & free \\
+    \textbf{Vision $+$ ADE (best overall)} & \textbf{78.68} & \textbf{78.36} & $+4.08$ & ADE/img (paid) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ===== Table: alternative VLM backbones (README sections 7-8) ==============
+\begin{table}[t]
+  \centering
+  \caption{Alternative vision-language backbones under hardware-matched
+    settings on VizWiz \texttt{val} (CIDEr). GIT-large is more data-efficient
+    (it wins at 20k) but does not surpass BLIP once rank is matched at full
+    scale; Qwen2.5-VL-3B is $\sim\!14\times$ slower and its 20k score already
+    requires blocking CJK tokens at generation. No alternative dethrones
+    BLIP-base in the 8\,GB budget. Dashes denote configurations not run (cost)
+    or blocked.}
+  \label{tab:alt-vlm}
+  \begin{tabular}{lrrl}
+    \toprule
+    Backbone & CIDEr @20k & CIDEr @full & Note \\
+    \midrule
+    \textbf{BLIP-base} & 64.73 & \textbf{74.60} & reference \\
+    GIT-large          & 69.26 & 73.91 & data-efficient; ties at scale \\
+    Qwen2.5-VL-3B (QLoRA 4-bit) & 63.57 & --- & $\sim\!14\times$ slower; CJK-blocked \\
+    Florence-2-large   & ---   & ---   & blocked (remote-code incompat.) \\
+    \bottomrule
+  \end{tabular}
+\end{table}

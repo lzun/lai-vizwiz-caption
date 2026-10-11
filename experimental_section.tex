@@ -1,0 +1,301 @@
+% =====================================================================
+%  Experimental section (Methods + Results) for the VizWiz-Captions study.
+%  Paste into your manuscript. Requires: booktabs, amsmath, siunitx, hyperref.
+%  Define the \cite keys used below in your .bib:
+%    vizwiz, blip, lora, peft, bitsandbytes, qlora, cider, bleu, rouge,
+%    clipscore, bertscore, sbert, landingai, git, qwen25vl, llava, florence2,
+%    easyocr, transformers.
+%  All results are on the COMPLETE validation split (7,542 images). CIDEr is
+%  corpus-dependent and is only compared within this fixed evaluation set.
+% =====================================================================
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Dataset and preprocessing}
+\label{sec:data}
+We study image captioning on \textbf{VizWiz-Captions}~\cite{vizwiz}, a benchmark of
+photographs taken by people who are blind, each annotated with five
+crowdsourced reference captions. The images are frequently blurry, poorly framed,
+rotated, or dominated by textual content (product labels, screens, documents):
+\SI{63}{\percent} of the images carry detectable text according to the dataset's
+\texttt{text\_detected} flag. This makes VizWiz a stress test for both visual
+robustness and the ability to convey on-image text, which is central to the
+assistive use case.
+
+We built a loader on the COCO-style annotations that (i) discards pre-canned
+captions (\texttt{is\_precanned}) and rejected captions (\texttt{is\_rejected}),
+and (ii) keeps only images retaining a minimum number of valid captions.
+Table~\ref{tab:data} summarizes the resulting partitions. The \textbf{test} split
+ships without public references (the evaluation server was retired), so all
+quantitative results are reported on the \textbf{complete validation split}
+(\num{7542} images), overall and split by \texttt{text\_detected} into
+\emph{text} (\num{5010}) and \emph{no-text} (\num{2532}) subsets.
+
+\begin{table}[t]
+\centering
+\caption{VizWiz-Captions partitions after cleaning. ``Used'' is the number of
+images retained after discarding pre-canned/rejected captions and enforcing the
+minimum-caption constraint.}
+\label{tab:data}
+\begin{tabular}{lrrrr}
+\toprule
+Split & Images & Raw caps. & Clean caps. & Used \\
+\midrule
+train & \num{23431} & \num{117155} & \num{100575} & \num{22866} \\
+val   & \num{7750}  & \num{38750}  & \num{33145}  & \num{7542}  \\
+test  & \num{8000}  & \multicolumn{2}{c}{--- hidden ---} & \num{8000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Computing environment}
+\label{sec:env}
+All experiments were run on a single consumer laptop GPU (NVIDIA RTX~5060 Laptop,
+\SI{8}{\giga\byte} VRAM, Blackwell \texttt{sm\_120}). Because the host operating
+system blocked the unsigned native CUDA libraries, the full pipeline was executed
+inside WSL2 (Ubuntu, Python~3.12) with PyTorch~2.11 (CUDA~12.8) and 4-bit
+quantization via \texttt{bitsandbytes}~\cite{bitsandbytes}. The \SI{8}{\giga\byte}
+budget is a hard constraint that shapes every design choice (parameter-efficient
+adaptation, 4-bit loading, batch size~1 with gradient accumulation for the larger
+VLMs).
+
+\subsection{Base model and low-rank adaptation}
+\label{sec:lora}
+Our primary model is \textbf{BLIP-base}~\cite{blip}
+(\texttt{Salesforce/blip-image-captioning-base}, \SI{225}{M} parameters),
+fine-tuned in half precision with Low-Rank Adaptation (LoRA)~\cite{lora} through
+the PEFT library~\cite{peft}. We consider two adaptation scopes: (i) \emph{text-only},
+injecting LoRA into the decoder self-attention projections (\texttt{query},
+\texttt{value}); and (ii) \emph{text+vision}, additionally adapting the ViT
+attention (\texttt{qkv}). Unless noted, LoRA uses $\alpha{=}2r$ and dropout~$0.05$;
+the text-only baseline uses $r{=}16$ (\SI{1.18}{M} trainable parameters,
+\SI{0.52}{\percent} of the model) and the scaled text+vision model uses $r{=}32$.
+Models are trained with AdamW at learning rate \num{1e-4}, half precision, and
+(where memory requires) non-reentrant gradient checkpointing, for up to four
+epochs; decoding uses beam search of width~3 with at most \num{30} new tokens.
+
+\subsection{OCR-conditioned captioning}
+\label{sec:ocr}
+To test whether explicitly reading on-image text helps, we condition the decoder
+on an OCR \emph{prefix}. The decoder input is
+\begin{equation}
+\texttt{[CLS]} \;\oplus\; \mathbf{t}_{\text{ocr}} \;\oplus\;
+\mathbf{t}_{\text{cap}} \;\oplus\; \texttt{[SEP]},
+\end{equation}
+with $\mathbf{t}_{\text{ocr}}$ the OCR text (truncated to \num{32} tokens) and
+$\mathbf{t}_{\text{cap}}$ the target caption (truncated to \num{40} tokens). The
+loss is masked over \texttt{[CLS]} and the OCR prefix, so the model learns to
+produce the caption given the image \emph{and} the transcribed text. At inference
+it generates from $\texttt{[CLS]}\oplus\mathbf{t}_{\text{ocr}}$ and the prefix is
+stripped by token length.
+
+We compare two OCR sources: \textbf{EasyOCR}~\cite{easyocr}, a free traditional
+engine, and \textbf{Landing~AI ADE}~\cite{landingai}, a paid vision agent that
+returns both literal transcriptions and scene descriptions. For the latter we
+evaluate two cleanings: \emph{text-only} (literal transcription) and \emph{full}
+(description~$+$~text). OCR was pre-computed and cached for \emph{all} text-bearing
+validation images (ADE non-empty for \num{4957}/\num{5010}, \SI{98.9}{\percent}),
+so the prefix is available throughout evaluation rather than on a subset.
+
+\subsection{Distillation for autonomous inference}
+\label{sec:distill}
+Because the ADE prefix requires a paid call \emph{at inference time}, we tested
+whether its benefit can be internalized into a stand-alone model: BLIP is trained
+on ADE-derived pseudo-captions and generates without any prefix. We tried two
+teachers: ADE's raw descriptive prose, and a \emph{style-matched} teacher (the
+Phase-3 prefix model, whose outputs already follow the terse VizWiz style).
+
+\subsection{Alternative vision--language models}
+\label{sec:vlms}
+We benchmarked four alternative VLMs under the same budget with 4-bit
+QLoRA~\cite{qlora} where applicable: \textbf{GIT-large}~\cite{git}
+(\texttt{microsoft/git-large-coco}); \textbf{Qwen2.5-VL-3B}~\cite{qwen25vl}
+(images $\le$\num{448}\,px, batch~1, grad.\ accumulation~8); and
+\textbf{LLaVA-1.5-7B}~\cite{llava} (LoRA on \texttt{q,k,v,o\_proj}, $r{=}16$,
+\num{20000} pairs, two epochs). \textbf{Florence-2-large}~\cite{florence2} was
+attempted but its custom modeling code was incompatible with our Transformers
+release~\cite{transformers} and it was excluded. For the LLM-style VLMs we also
+report a deterministic \emph{first-sentence} truncation of the caption
+(Sec.~\ref{sec:res:vlms}).
+
+\subsection{Evaluation metrics and protocol}
+\label{sec:metrics}
+We report \textbf{CIDEr}~\cite{cider}, \textbf{BLEU-1..4}~\cite{bleu} and
+\textbf{ROUGE-L}~\cite{rouge} via \texttt{pycocoevalcap} with an in-house
+tokenizer (avoiding a Java dependency; METEOR and SPICE are not reported). Because
+$n$-gram metrics reward lexical overlap with short references and penalize
+paraphrase and verbosity, we complement them with \textbf{CLIPScore}~\cite{clipscore}
+(reference-free image--caption cosine, CLIP ViT-B/32), \textbf{BERTScore}~\cite{bertscore}
+(RoBERTa-large $F_1$, baseline-rescaled), and \textbf{SBERT} cosine
+similarity~\cite{sbert} (\texttt{all-MiniLM-L6-v2}). All metrics are computed on
+the complete validation split. We note that CIDEr's TF-IDF weighting is
+corpus-specific, so its absolute values are \emph{not} comparable across different
+evaluation sets; all comparisons here are within the same fixed \num{7542}-image set.
+
+\subsection{Implementation note: BLIP prefix decoding}
+\label{sec:note}
+\texttt{BlipForConditionalGeneration.generate} drops the last token of the supplied
+\texttt{input\_ids} (it assumes a trailing \texttt{[SEP]}); passing a bare
+$\texttt{[CLS]}\oplus\mathbf{t}_{\text{ocr}}$ prefix therefore discarded the final
+prefix token and misaligned the length-based prefix removal, deleting the first
+generated word. We fix this by appending a filler \texttt{[SEP]}, so the decoder
+conditions on the complete prefix and the output offset is correct. All
+prefix-based numbers use the corrected decoding.
+
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Fine-tuning and vision-encoder scaling}
+\label{sec:res:ft}
+Table~\ref{tab:progression} traces the autonomous (prefix-free) model. Text-only
+LoRA adds \num{+14.6} CIDEr over zero-shot, and scaling the training set a further
+\num{+7.2}. The largest single gain comes from adapting the \emph{vision encoder}:
+adding LoRA to the ViT lifts CIDEr by \num{+15.5} (\num{69.10}$\rightarrow$\num{84.63}),
+far more than extra epochs or rank ($r{=}64$ did not help). Our best autonomous
+model (text+vision, $r{=}32$, four epochs) reaches \textbf{\num{86.93}} CIDEr.
+
+\begin{table}[t]
+\centering
+\caption{Autonomous fine-tuning progression (validation, $n{=}7542$, beam${=}3$).
+Vision-encoder adaptation is the dominant lever.}
+\label{tab:progression}
+\begin{tabular}{lrrrr}
+\toprule
+Model & CIDEr & BLEU-4 & BLEU-1 & ROUGE-L \\
+\midrule
+BLIP-base (zero-shot)                 & 47.27 & 19.54 & 61.29 & 42.75 \\
+\;+ LoRA (text), 20k, 2 ep            & 61.91 & 22.08 & 64.47 & 45.93 \\
+\;+ LoRA (text), full, 3 ep           & 69.10 & 24.20 & 66.40 & 47.28 \\
+\;+ LoRA (text+vis., $r{=}32$), 2 ep  & 84.63 & 27.60 & 69.60 & 49.64 \\
+\textbf{\;+ LoRA (text+vis., $r{=}32$), 4 ep} & \textbf{86.93} & \textbf{27.93} & \textbf{70.15} & \textbf{49.83} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{OCR as a decoder prefix}
+\label{sec:res:ocr}
+Table~\ref{tab:ocr20k} compares the three OCR sources against a no-OCR control on
+the \num{20000}-pair subset. \emph{Literal} OCR does not help: both EasyOCR and the
+text-only ADE transcription stay at or below the control, including on text-bearing
+images. Only the \emph{full} ADE prefix, which includes a scene \emph{description},
+surpasses the control (\num{+8.1} overall, \num{+12.3} on text). The benefit is thus
+attributable to the multimodal description of a strong external agent---effectively
+distillation from a VLM---not to OCR per se.
+
+\begin{table}[t]
+\centering
+\caption{OCR-prefix captioning, 20k subset (validation CIDEr). Only the full ADE
+description beats the no-OCR control.}
+\label{tab:ocr20k}
+\begin{tabular}{lrrr}
+\toprule
+Prefix & All & Text & No-text \\
+\midrule
+Control (no OCR)            & 61.87 & 61.63 & 59.60 \\
+EasyOCR                     & 60.67 & 60.02 & 59.26 \\
+Landing AI ADE (text-only)  & 61.73 & 61.70 & 59.46 \\
+\textbf{Landing AI ADE (full)} & \textbf{69.99} & \textbf{73.96} & \textbf{59.56} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Distillation}
+\label{sec:res:distill}
+Internalizing the ADE signal into an autonomous model failed to transfer the gain
+(Table~\ref{tab:distill}). Distilling ADE's verbose prose collapsed quality
+(\num{61.52}$\rightarrow$\num{35.96}): the model adopted the descriptive style
+everywhere---even on no-text images ($59.29\rightarrow43.49$)---and stopped matching
+the short human captions. A style-matched teacher removed the collapse
+(\num{35.96}$\rightarrow$\num{60.92}) but only reached parity with the control. The
+advantage of the strong agent resides in its \emph{fresh per-image inference}, not
+in a handful of pseudo-labels.
+
+\begin{table}[t]
+\centering
+\caption{Distillation toward an autonomous model (validation CIDEr).}
+\label{tab:distill}
+\begin{tabular}{lrrr}
+\toprule
+Model & All & Text & No-text \\
+\midrule
+Control                           & 61.52 & 61.27 & 59.29 \\
+ADE prefix (Phase 3)              & 69.99 & 73.96 & 59.56 \\
+Distil.\ ADE prose (Phase 4)      & 35.96 & 31.33 & 43.49 \\
+Distil.\ style-matched (Phase 4b) & 60.92 & 60.54 & 58.92 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Combining ADE with vision-encoder scaling}
+\label{sec:res:full}
+Since ADE is paid at inference regardless, we ask whether it is redundant with
+vision-encoder adaptation or complementary. On the 20k subset with the text+vision
+model, the ADE description adds \num{+10.7} CIDEr on text-bearing images over a
+vision-only control (\num{79.36}$\rightarrow$\num{90.07})---\emph{larger} than the
+gain on the text-only model---so the two signals are complementary. Scaled to the
+full training set (Table~\ref{tab:full}), the combination reaches
+\textbf{\num{94.77}} CIDEr (\textbf{\num{103.38}} on text), \num{+7.84} over the best
+autonomous model (\num{+11.63} on text). Noisy EasyOCR, by contrast, stays
+\emph{below} the vision-only model ($-1.83$), confirming that \emph{OCR quality},
+not OCR presence, is what matters.
+
+\begin{table}[t]
+\centering
+\caption{Full-scale models (validation CIDEr). The vision$+$ADE combination is best
+overall; the vision-only model is the best \emph{autonomous} one.}
+\label{tab:full}
+\begin{tabular}{llrrr}
+\toprule
+Model & Inference & All & Text & No-text \\
+\midrule
+EasyOCR + vision          & free & 85.10 & 89.33 & 73.47 \\
+Vision only               & free & 86.93 & 91.75 & 74.16 \\
+\textbf{Vision + ADE (full)} & paid & \textbf{94.77} & \textbf{103.38} & 74.48 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Alternative VLMs and metrics beyond $n$-grams}
+\label{sec:res:vlms}
+Table~\ref{tab:vlms} reports all models on the complete validation set under both
+$n$-gram and embedding-based metrics. Among autonomous backbones, none surpasses
+fine-tuned BLIP at comparable cost: GIT-large (\num{84.54}) trails the BLIP vision
+model (\num{86.93}), and Qwen2.5-VL-3B (\num{70.54}, $\sim$\num{14}$\times$ slower)
+is far behind after suppressing its non-English token leakage.
+
+LLaVA-1.5-7B is instructive for \emph{evaluation}. Raw, it is the best on-image
+reader but pathologically verbose (\num{23.7} words/caption vs.\ $\sim$\num{12} for
+humans), degenerating into repetition after an accurate first sentence; this
+collapses every metric (CIDEr~\num{15.20}, BERTScore~\num{31.21}). A trivial,
+deterministic \emph{first-sentence truncation} turns it into a top autonomous model:
+CIDEr~\num{90.15} (above the \num{86.93} vision-only model) and the best score of all
+on BERTScore (\num{56.10}) and SBERT (\num{69.76}). The corpus-level metrics never
+detected the defect---only inspecting the captions did---underscoring that
+\emph{capability and presentation are distinct axes} that aggregate metrics conflate.
+CLIPScore is flat ($\sim$\num{0.74}) and fails to discriminate, consistent with CLIP's
+poor on-image text reading in this domain. The $n$-gram and semantic metrics also
+diverge: \textbf{BLIP+ADE} tops CIDEr but sits near the bottom of the quality models
+on BERTScore, whereas the fluent LLM-style captioners (GIT, LLaVA-1st) lead the
+semantic metrics---each metric rewards a different notion of quality.
+
+\begin{table*}[t]
+\centering
+\caption{Model comparison on the complete validation set ($n{=}7542$). BLEU-4,
+ROUGE-L, BERTScore and SBERT are $\times 100$; CLIPScore is raw cosine. BLIP/GIT
+decode with beam${=}3$; Qwen/LLaVA decode greedily. Best per column in \textbf{bold}.}
+\label{tab:vlms}
+\begin{tabular}{lcrrrrrr}
+\toprule
+Model & Inference & CIDEr & BLEU-4 & ROUGE-L & CLIPScore & BERTScore & SBERT \\
+\midrule
+BLIP + vision                 & free & 86.93 & 27.93 & 49.83 & 0.74 & 50.19 & 67.87 \\
+\textbf{BLIP + ADE (full)}    & paid & \textbf{94.77} & \textbf{29.46} & \textbf{50.51} & 0.75 & 50.07 & 69.33 \\
+GIT-large                     & free & 84.54 & 28.12 & 49.75 & 0.74 & 52.00 & 69.43 \\
+Qwen2.5-VL-3B                 & free & 70.54 & 20.46 & 44.89 & 0.74 & 51.14 & 65.90 \\
+LLaVA-1.5-7B (raw)            & free & 15.20 & 12.62 & 33.93 & 0.76 & 31.21 & 60.89 \\
+LLaVA-1.5-7B (1st sentence)   & free & 90.15 & 27.77 & 50.04 & 0.75 & \textbf{56.10} & \textbf{69.76} \\
+\bottomrule
+\end{tabular}
+\end{table*}

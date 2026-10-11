@@ -1,0 +1,132 @@
+% ---------------------------------------------------------------------------
+% Results section for the VizWiz-Captions captioning study.
+% References the experimental design of Section 4.5 and the tables in
+% paper_results_tables.tex. Uses \ref{...}; if you load cleveref, you may
+% replace "Table~\ref{...}" with "\Cref{...}".
+% ---------------------------------------------------------------------------
+
+\section{Results}
+\label{sec:results}
+
+We present results following the four axes of the experimental design
+(Section~\ref{sec:design}): \emph{where} to adapt the backbone
+(Section~\ref{sec:res-scaling}), whether OCR signal helps
+(Section~\ref{sec:res-ocr}), whether OCR and vision adaptation combine
+(Section~\ref{sec:res-ade-vision}), and whether BLIP-base is the right backbone
+(Section~\ref{sec:res-backbones}). All numbers are CIDEr on VizWiz
+\texttt{val} unless noted, and every comparison in Sections~\ref{sec:res-ocr}
+and~\ref{sec:res-ade-vision} is a controlled A/B in which only the stated factor
+varies.
+
+\subsection{Where to adapt: scaling the LoRA target}
+\label{sec:res-scaling}
+
+Table~\ref{tab:main-results} reports the main fine-tuning ladder. Parameter-%
+efficient fine-tuning already lifts the un-adapted BLIP-base from
+43.5 to 60.3 CIDEr ($+16.8$) with text-only LoRA on the full training set, of
+which $+5.9$ comes from scaling the data from 20k pairs to the full corpus
+($54.4\!\to\!60.3$). The decisive lever, however, is \emph{where} adaptation is
+applied rather than how much data it sees: extending LoRA to the vision
+encoder's attention projections (adding \texttt{qkv}, rank $r{=}32$) raises CIDEr
+from 60.3 to 72.7, a $+12.4$ jump that dominates every other factor we study.
+Adapting the visual features to the domain --- blurry, oddly framed, poorly lit
+photographs --- matters far more than further adapting the text decoder.
+
+Beyond this point the configuration saturates. Extending training from 2 to 4
+epochs adds a further $+1.9$ (to \textbf{74.6} CIDEr) with no sign of
+overfitting, while raising the rank to $r{=}64$ does not help (74.0 vs.\ 74.6),
+confirming $r{=}32$ as the operating point. A learning-rate sweep reproduces the
+need to validate at the final budget: $\text{lr}{=}2\mathrm{e}{-}4$ wins at 2
+epochs (73.5 vs.\ 72.7) but \emph{loses} at 4 epochs (73.7 vs.\ 74.6), so the
+ranking inverts with budget. The resulting model --- text+vision LoRA,
+$r{=}32$, 4 epochs, $\text{lr}{=}1\mathrm{e}{-}4$, dropout 0.05 --- is our
+\textbf{best autonomous model} (74.6 CIDEr, free at inference) and serves as the
+control for the OCR experiments that follow.
+
+\subsection{Does OCR signal help? (Phases 1--4b)}
+\label{sec:res-ocr}
+
+\paragraph{Engine characterization (Phase~1).}
+Since VizWiz-Captions carries no OCR ground truth, we first characterize the two
+engines qualitatively (Table~\ref{tab:ocr-engines}). EasyOCR fails or returns
+empty on 6 of 30 with-text images and collapses into noise on degraded photos,
+whereas Landing AI ADE never fails and extracts $3.4\times$ more text. Crucially,
+ADE is not a pure OCR engine: on 20 of 30 images it returns a \emph{scene
+description} rather than a verbatim transcription, placing its output closer to a
+caption than to raw text --- a distinction that turns out to drive every
+subsequent result.
+
+\paragraph{A literal OCR prefix hurts (Phase~2).}
+Injecting EasyOCR text as a conditional decoder prefix \emph{degrades}
+captioning (Table~\ref{tab:phase2-easyocr}): $-3.35$ CIDEr globally and $-4.31$
+on the with-text subset. The experiment is clean --- the no-text subset, where
+no prefix is injected, is unchanged ($+0.25$) --- so the damage comes from the
+noisy OCR \emph{content}, not from the prefixing mechanism.
+
+\paragraph{Quality is decisive, and it is the description that helps (Phase~3).}
+Replacing EasyOCR with ADE produces a strictly monotone ordering
+(Table~\ref{tab:phase3-ade}): EasyOCR (noisy) $<$ ADE text-only (clean but
+literal) $<$ full ADE, and only full ADE beats the control ($+2.5$ globally,
+$+3.2$ on with-text). Because the literal, text-only variant remains \emph{below}
+the control, the gain is not attributable to ``reading the text'': it comes from
+ADE's scene description, which effectively distills a strong external
+vision--language model. The winning variant, however, carries a deployment cost
+--- it requires an ADE call per image at inference.
+
+\paragraph{The gain does not distill into an autonomous model (Phases~4, 4b).}
+We therefore attempt to internalize the Phase-3 gain without the inference-time
+dependency. Using ADE descriptions directly as pseudo-caption targets
+(Phase~4) is sharply counterproductive (Table~\ref{tab:phase4-distill}): CIDEr
+collapses from 55.1 to 33.5 as the student absorbs ADE's verbose prose and
+applies it everywhere, degrading even the no-text subset
+($62.9\!\to\!46.7$) where no pseudo-captions were added. Correcting the
+caption-style mismatch --- distilling from a teacher that already emits short,
+VizWiz-style captions (Phase~4b) --- recovers the collapse
+($33.5\!\to\!54.2$, Table~\ref{tab:phase4b-distill}) but only reaches parity with
+the control and stays below Phase~3. In short, style matching neutralizes the
+damage without capturing the gain: the value of the strong VLM resides in its
+per-image inference, which a small student does not internalize from
+$\sim\!2{,}000$ pseudo-labels.
+
+\subsection{Combining ADE with vision adaptation}
+\label{sec:res-ade-vision}
+
+The Phase-3 gain was measured on a \emph{weak} backbone (20k, text-only,
+$r{=}16$), leaving open whether ADE is still useful once the vision encoder is
+adapted, or whether vision scaling already captures the same object/brand
+information. Phase~A answers this at the 20k scale
+(Table~\ref{tab:phaseA-ade-vision}): the signals are additive. ADE adds $+4.52$
+CIDEr on with-text images \emph{over} the vision-adapted control --- larger than
+the $+3.2$ seen on the text-only backbone --- so vision scaling does not subsume
+ADE. EasyOCR still hurts ($-3.04$), though less than on the text-only backbone,
+confirming that better visual features ignore noise more gracefully without
+making it useful.
+
+Phase~B confirms the effect at full-train scale
+(Table~\ref{tab:phaseB-ade-vision}): the $\sim\!+4$ delta holds, yielding our
+\textbf{best overall result of 78.68 CIDEr} ($+4.08$ over the 74.6 vision-only
+model). A near-perfect symmetry emerges around the control --- noisy OCR
+subtracts ${\sim}4.3$, strong OCR adds ${\sim}4.1$ --- and the ordering
+EasyOCR $<$ control $<$ ADE replicates in both regimes. The practical trade-off
+is explicit: the 78.68 model requires a paid ADE call per image at inference,
+so we report two operating points --- \textbf{78.68} (best overall, paid) and
+\textbf{74.60} (best autonomous, free and local).
+
+\subsection{Alternative vision--language backbones}
+\label{sec:res-backbones}
+
+Finally, we verify that BLIP-base is a reasonable backbone choice
+(Table~\ref{tab:alt-vlm}). GIT-large is more data-efficient --- it outperforms
+BLIP at 20k (69.3 vs.\ 64.7) --- but this advantage does not survive scaling:
+with rank matched at $r{=}32$ on the full set, GIT reaches 73.9 against BLIP's
+74.6, a near-tie with BLIP marginally ahead. This is a cautionary case for
+low-data prototyping: the 20k ranking would have led to the wrong conclusion.
+Qwen2.5-VL-3B is feasible in 8\,GB via 4-bit QLoRA but $\sim\!14\times$ slower,
+and its bilingual prior leaks Chinese into 26\% of captions; blocking CJK tokens
+at generation raises it to 63.6 CIDEr (64.9 on with-text, 55.8 on no-text),
+better than BLIP on with-text but worse without, and still below both BLIP and
+GIT at 20k --- and forcing English in the \emph{training} prompt (an 11-hour
+rerun) made it worse, not better. Florence-2-large could not be evaluated: its
+custom remote code is incompatible with the installed Transformers release. We
+conclude that no alternative dethrones BLIP-base for this task within the 8\,GB
+budget, and that BLIP-base was the correct backbone choice.
